@@ -1,3 +1,4 @@
+// @ts-nocheck
 interface CustomEventInit<T = any> {
   detail?: T;
   bubbles?: boolean;

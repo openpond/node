@@ -563,7 +563,9 @@ export class P2PNetwork extends EventEmitter {
         try {
           Logger.info("P2P", "Message is encrypted, decrypting");
           const decrypted = await decrypt(this.privateKey, contentBytes);
-          decryptedContent = new TextDecoder().decode(decrypted);
+          decryptedContent = new TextDecoder().decode(
+            new Uint8Array(decrypted)
+          );
         } catch (decryptError) {
           // If decryption fails, treat as unencrypted
           Logger.info("P2P", "Message was not encrypted");

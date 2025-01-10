@@ -94,7 +94,7 @@ dependencies:
     version: 5.1.0
   viem:
     specifier: ^2.21.57
-    version: 2.21.57
+    version: 2.21.57(typescript@5.7.3)
 
 devDependencies:
   '@types/body-parser':
@@ -124,6 +124,9 @@ devDependencies:
   tsx:
     specifier: ^4.19.2
     version: 4.19.2
+  typescript:
+    specifier: ^5.7.3
+    version: 5.7.3
 
 packages:
 
@@ -962,7 +965,7 @@ packages:
     resolution: {integrity: sha512-nne9/IiQ/hzIhY6pdDnbBtz7DjPTKrY00P/zvPSm5pOFkl6xuGrGnXn/VtTNNfNtAfZ9/1RtehkszU9qcTii0Q==}
     dev: false
 
-  /abitype@1.0.7:
+  /abitype@1.0.7(typescript@5.7.3):
     resolution: {integrity: sha512-ZfYYSktDQUwc2eduYu8C4wOs+RDPmnRYMh7zNfzeMtGGgb0U+6tLGjixUic6mXf5xKKCcgT5Qp6cv39tOARVFw==}
     peerDependencies:
       typescript: '>=5.0.4'
@@ -972,6 +975,8 @@ packages:
         optional: true
       zod:
         optional: true
+    dependencies:
+      typescript: 5.7.3
     dev: false
 
   /abort-controller@3.0.0:
@@ -2179,7 +2184,7 @@ packages:
       wordwrap: 0.0.3
     dev: false
 
-  /ox@0.1.2:
+  /ox@0.1.2(typescript@5.7.3):
     resolution: {integrity: sha512-ak/8K0Rtphg9vnRJlbOdaX9R7cmxD2MiSthjWGaQdMk3D7hrAlDoM+6Lxn7hN52Za3vrXfZ7enfke/5WjolDww==}
     peerDependencies:
       typescript: '>=5.4.0'
@@ -2192,8 +2197,9 @@ packages:
       '@noble/hashes': 1.6.1
       '@scure/bip32': 1.6.0
       '@scure/bip39': 1.5.0
-      abitype: 1.0.7
+      abitype: 1.0.7(typescript@5.7.3)
       eventemitter3: 5.0.1
+      typescript: 5.7.3
     transitivePeerDependencies:
       - zod
     dev: false
@@ -2594,6 +2600,11 @@ packages:
       mime-types: 2.1.35
     dev: false
 
+  /typescript@5.7.3:
+    resolution: {integrity: sha512-84MVSjMEHP+FQRPy3pX9sTVV/INIex71s9TL2Gm5FG/WG1SqXeKyZ0k7/blY/4FdOzI12CBy1vGc4og/eus0fw==}
+    engines: {node: '>=14.17'}
+    hasBin: true
+
   /uint8-varint@2.0.4:
     resolution: {integrity: sha512-FwpTa7ZGA/f/EssWAb5/YV6pHgVF1fViKdW8cWaEarjB8t7NyofSWBdOTyFPaGuUG4gx3v1O3PQ8etsiOs3lcw==}
     dependencies:
@@ -2635,7 +2646,7 @@ packages:
     engines: {node: '>= 0.8'}
     dev: false
 
-  /viem@2.21.57:
+  /viem@2.21.57(typescript@5.7.3):
     resolution: {integrity: sha512-Mw4f4Dw0+Y/wSHdynVmP4uh+Cw15HEoj8BOKvKH5nGA6oFZYRxSy9Ruu7ZG8jexeAVCZ57aIuXb0gNg6Vb1x0g==}
     peerDependencies:
       typescript: '>=5.0.4'
@@ -2647,9 +2658,10 @@ packages:
       '@noble/hashes': 1.6.1
       '@scure/bip32': 1.6.0
       '@scure/bip39': 1.5.0
-      abitype: 1.0.7
+      abitype: 1.0.7(typescript@5.7.3)
       isows: 1.0.6(ws@8.18.0)
-      ox: 0.1.2
+      ox: 0.1.2(typescript@5.7.3)
+      typescript: 5.7.3
       webauthn-p256: 0.0.10
       ws: 8.18.0
     transitivePeerDependencies:
