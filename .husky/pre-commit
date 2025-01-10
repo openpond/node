@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Check for Ethereum private keys in staged files
+FILES=$(git diff --cached --name-only)
+if [ -z "$FILES" ]; then
+  echo "No files to check"
+  exit 0
+fi
+
+if git --no-pager grep -l -E "0x[0-9a-fA-F]{64}" $FILES; then
+  echo "Error: Found potential Ethereum private key in the above file(s)!"
+  exit 1
+fi 

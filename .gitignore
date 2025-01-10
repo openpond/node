@@ -1,0 +1,23 @@
+# Environment variables
+.env
+.env.agent1
+.env.agent2
+.env.api
+
+# Bootstrap keys
+bootstrap-keys/
+bootstrap-keys/*
+
+# Logs
+*.log
+swarm.log
+p2p/swarm.log
+
+# Dependencies
+node_modules/
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

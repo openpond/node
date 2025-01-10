@@ -1,0 +1,34 @@
+[build]
+builder = "dockerfile"
+
+[deploy]
+startCommand = "pnpm run server"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+[deploy.envVars]
+NODE_ENV = "production"
+AGENT_NAME = "api-node"
+MODE = "api"
+NETWORK = "base"
+REGISTRY_ADDRESS = "0x05430ECEc2E4D86736187B992873EA8D5e1f1e32"
+
+# Optional (shown with defaults)
+P2P_PORT = "8000"
+API_PORT = "3000"
+
+# Required but set in Railway dashboard for security:
+# PRIVATE_KEY
+# RPC_URL
+
+[[deploy.ports]]
+# HTTP API port
+port = "3000"
+protocol = "http"
+internal = "3000"
+
+[[deploy.ports]]
+# P2P port for node communication
+port = "8000"
+protocol = "tcp"
+internal = "8000" 

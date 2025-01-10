@@ -1,0 +1,46 @@
+app = "p2p-agents"
+
+[env]
+  NODE_ENV = "production"
+  NETWORK = "base"
+  # Will use existing bootstrap nodes
+  BOOTSTRAP_NODES = "${BOOTSTRAP_NODES}"
+
+[[services]]
+  internal_port = 8080
+  protocol = "tcp"
+
+  [[services.ports]]
+    port = "8080"
+    handlers = ["proxy_proto"]
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 1000
+    soft_limit = 800
+
+[deploy]
+  strategy = "rolling"
+  regions = [
+    "sjc", # San Jose
+    "sea", # Seattle
+    "ord", # Chicago
+    "dfw", # Dallas
+    "iad", # Virginia
+    "ewr", # New Jersey
+    "lhr", # London
+    "ams", # Amsterdam
+    "fra", # Frankfurt
+    "mad", # Madrid
+    "cdg", # Paris
+    "nrt", # Tokyo
+    "hkg", # Hong Kong
+    "sin", # Singapore
+    "syd", # Sydney
+    "gru"  # São Paulo
+  ]
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512 
