@@ -1,7 +1,6 @@
 {
   "name": "@openpond/p2p",
   "version": "0.1.0",
-  "type": "module",
   "scripts": {
     "generate:bootstrap": "tsx scripts/generate-bootstrap-ids.ts",
     "node": "tsx src/node.ts",
@@ -14,6 +13,9 @@
     "explorer:agent1": "ENV_FILE=.env.agent1 tsx scripts/agent-explorer.ts",
     "explorer:agent2": "ENV_FILE=.env.agent2 tsx scripts/agent-explorer.ts",
     "start:explorer": "UI=explorer tsx scripts/start.ts",
+    "agent:agent1": "ENV_FILE=.env.agent1 tsx src/agents/run-agent.ts",
+    "agent:agent2": "ENV_FILE=.env.agent2 tsx src/agents/run-agent.ts",
+    "agent:agent3": "ENV_FILE=.env.agent3 tsx src/agents/run-agent.ts",
     "deploy:fly": "tsx scripts/deploy-fly.ts",
     "monitor:fly": "tsx scripts/monitor-fly.ts",
     "fly:logs": "fly logs",
@@ -23,12 +25,17 @@
     "server:dev": "ENV_FILE=.env.api tsx watch server/index.ts",
     "server:build": "tsc -p server/tsconfig.json",
     "start": "node dist/server/index.js",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "build": "rollup -c",
+    "version": "node -p \"require('./package.json').version\"",
+    "proto:gen": "protoc --plugin=protoc-gen-ts_proto=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=. --ts_proto_opt=esModuleInterop=true ./src/proto/*.proto"
   },
   "dependencies": {
     "@chainsafe/libp2p-gossipsub": "^14.1.0",
     "@chainsafe/libp2p-noise": "^16.0.0",
     "@chainsafe/libp2p-yamux": "^7.0.1",
+    "@grpc/grpc-js": "^1.9.13",
+    "@grpc/proto-loader": "^0.7.10",
     "@libp2p/bootstrap": "^11.0.16",
     "@libp2p/crypto": "^5.0.8",
     "@libp2p/identify": "^3.0.12",
@@ -51,23 +58,44 @@
     "eciesjs": "^0.4.13",
     "express": "^4.18.2",
     "libp2p": "^2.3.1",
+    "long": "^5.2.3",
     "openai": "^4.77.0",
+    "protobufjs": "^7.4.0",
+    "rxjs": "^7.8.1",
     "secp256k1": "^5.0.1",
     "terminal-kit": "^3.0.1",
     "uint8arrays": "^5.1.0",
     "viem": "^2.21.57"
   },
   "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^11.1.6",
     "@types/body-parser": "^1.19.5",
     "@types/chalk": "^2.2.4",
     "@types/cors": "^2.8.17",
     "@types/dotenv": "^8.2.3",
     "@types/express": "^4.17.21",
+    "@types/google-protobuf": "^3.15.12",
     "@types/node": "^20.11.16",
     "@types/secp256k1": "^4.0.6",
     "axios": "^1.6.2",
+    "esbuild": "^0.19.12",
     "husky": "^8.0.3",
+    "pkg": "^5.8.1",
+    "rollup": "^4.9.6",
+    "ts-proto": "^1.165.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3"
+  },
+  "bin": {
+    "p2p-node": "dist/p2p-node"
+  },
+  "type": "module",
+  "packageManager": "pnpm@8.15.1",
+  "engines": {
+    "node": ">=18"
   }
 }

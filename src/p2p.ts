@@ -467,13 +467,6 @@ export class P2PNetwork extends EventEmitter {
       // Store the agent name mapping - use the actual agent name from the announcement
       this.knownAgentNames.set(agentId.toLowerCase(), agentName);
 
-      // Log the mapping being stored
-      Logger.info("P2P", "Storing peer mapping from announcement", {
-        peerId,
-        agentId,
-        agentName,
-      });
-
       this.storePeerMapping(peerId, agentId);
 
       // Try to connect if we have multiaddrs
@@ -584,6 +577,10 @@ export class P2PNetwork extends EventEmitter {
         Logger.info("P2P", "Emitting decrypted message", {
           messageId: message.messageId,
           content: decryptedContent,
+          listenerCount: this.listenerCount("message"),
+          listeners: this.listeners("message").map(
+            (fn) => fn.name || "anonymous"
+          ),
         });
 
         // Emit decrypted message event
@@ -974,10 +971,6 @@ export class P2PNetwork extends EventEmitter {
     try {
       // Get all connected peers
       const peers = this.node.getPeers();
-      Logger.info("P2P", "Finding peers in network", {
-        peerCount: peers.length,
-        type: this.bootstrapMode ? "bootstrap" : "agent",
-      });
 
       // Use our local known peer mappings
       for (const [peerId, ethAddr] of this.knownPeerToEthMap.entries()) {
@@ -991,12 +984,6 @@ export class P2PNetwork extends EventEmitter {
             `Agent ${ethAddr.slice(0, 6)}`,
         };
       }
-
-      Logger.info("P2P", "Network Peer Discovery Complete", {
-        recordCount: Object.keys(records).length,
-        type: this.bootstrapMode ? "bootstrap" : "agent",
-        routingTableSize: this.node.services.dht.routingTable.size,
-      });
     } catch (error) {
       Logger.error("P2P", "Failed to discover peers", { error });
     }
@@ -1126,8 +1113,6 @@ export class P2PNetwork extends EventEmitter {
         "agent-announcements",
         new TextEncoder().encode(JSON.stringify({ message: announcement }))
       );
-
-      Logger.info("P2P", "Published presence to network");
     } catch (error) {
       Logger.error("P2P", "Failed to publish to network", { error });
     }
@@ -1607,8 +1592,6 @@ export class P2PNetwork extends EventEmitter {
         "agent-announcements",
         new TextEncoder().encode(JSON.stringify({ message: announcement }))
       );
-
-      Logger.info("P2P", "Published presence to network");
     } catch (error) {
       Logger.error("P2P", "Failed to announce presence", { error });
     }
@@ -1680,6 +1663,5 @@ export class P2PNetwork extends EventEmitter {
    */
   private storePeerMapping(peerId: string, ethAddress: string) {
     this.knownPeerToEthMap.set(peerId, ethAddress);
-    Logger.info("P2P", "Stored peer mapping", { peerId, ethAddress });
   }
 }

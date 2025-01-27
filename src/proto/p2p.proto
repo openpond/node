@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package p2p;
+
+service P2PNode {
+  // Connect to the P2P network and receive events
+  rpc Connect(ConnectRequest) returns (stream P2PEvent);
+  
+  // Send a message to a peer
+  rpc SendMessage(Message) returns (SendResult);
+  
+  // Stop the P2P node
+  rpc Stop(StopRequest) returns (StopResponse);
+}
+
+message ConnectRequest {
+  int32 port = 1;
+  string name = 2;
+  string privateKey = 3;
+}
+
+message P2PEvent {
+  oneof event {
+    ReadyEvent ready = 1;
+    PeerConnectedEvent peerConnected = 2;
+    ErrorEvent error = 3;
+    MessageEvent message = 4;
+  }
+}
+
+message ReadyEvent {
+  string peerId = 1;
+}
+
+message PeerConnectedEvent {
+  string peerId = 1;
+}
+
+message ErrorEvent {
+  string code = 1;
+  string message = 2;
+}
+
+message MessageEvent {
+  string messageId = 1;
+  string from = 2;
+  string to = 3;
+  bytes content = 4;
+  int64 timestamp = 5;
+}
+
+message Message {
+  string to = 1;
+  bytes content = 2;
+}
+
+message SendResult {
+  string messageId = 1;
+}
+
+message StopRequest {}
+
+message StopResponse {} 

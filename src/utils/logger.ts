@@ -1,7 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 
-export type LogLevel = "DEBUG" | "INFO" | "WARN" | "ERROR";
+export type LogLevel = "debug" | "info" | "warn" | "error";
 
 type LogHandler = (
   level: LogLevel,
@@ -47,40 +47,29 @@ export class Logger {
       if (options.useStdout) {
         this.addLogHandler((level, namespace, message, meta) => {
           const timestamp = new Date().toISOString();
-          const metaStr = meta ? ` ${JSON.stringify(meta)}` : "";
-          const logLine = `[${timestamp}] [${level}] [${namespace}] ${message}${metaStr}`;
-
-          // Use different console methods based on level
-          switch (level) {
-            case "ERROR":
-              console.error(logLine);
-              break;
-            case "WARN":
-              console.warn(logLine);
-              break;
-            case "DEBUG":
-              console.debug(logLine);
-              break;
-            default:
-              console.log(logLine);
-          }
+          const logEntry = {
+            timestamp,
+            level,
+            namespace,
+            message,
+            meta,
+          };
+          console.log(JSON.stringify(logEntry));
         });
       }
 
       // Set up file log handler
-      if (options.useFile) {
+      if (options.useFile && this.logFile) {
         this.addLogHandler(async (level, namespace, message, meta) => {
-          if (!this.logFile) return;
-
           const timestamp = new Date().toISOString();
-          const metaStr = meta ? ` ${JSON.stringify(meta)}` : "";
-          const logLine = `[${timestamp}] [${level}] [${namespace}] ${message}${metaStr}\n`;
-
-          try {
-            await fs.appendFile(this.logFile, logLine);
-          } catch (error) {
-            console.error("Failed to write to log file:", error);
-          }
+          const logEntry = {
+            timestamp,
+            level,
+            namespace,
+            message,
+            meta,
+          };
+          await fs.appendFile(this.logFile!, JSON.stringify(logEntry) + "\n");
         });
       }
 
@@ -140,18 +129,18 @@ export class Logger {
   }
 
   static async debug(namespace: string, message: string, meta?: any) {
-    await this.log("DEBUG", namespace, message, meta);
+    await this.log("debug", namespace, message, meta);
   }
 
   static async info(namespace: string, message: string, meta?: any) {
-    await this.log("INFO", namespace, message, meta);
+    await this.log("info", namespace, message, meta);
   }
 
   static async warn(namespace: string, message: string, meta?: any) {
-    await this.log("WARN", namespace, message, meta);
+    await this.log("warn", namespace, message, meta);
   }
 
   static async error(namespace: string, message: string, meta?: any) {
-    await this.log("ERROR", namespace, message, meta);
+    await this.log("error", namespace, message, meta);
   }
 }

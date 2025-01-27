@@ -1,0 +1,1 @@
+{"version":3,"file":"events.js","sourceRoot":"","sources":["events.ts"],"names":[],"mappings":"","sourcesContent":["export interface NodeEvent {\n  type: \"ready\" | \"message\" | \"peer_discovered\";\n  payload: {\n    peerId?: string;\n    from?: string;\n    content?: string;\n    topics?: string[];\n  };\n}\n"]}

@@ -20,8 +20,8 @@ export const BOOTSTRAP_PEER_IDS = {
 export const BOOTSTRAP_PORTS = {
   "bootstrap-1": "14220", // Port for us-east
   "bootstrap-2": "43343", // Port for us-west
-  "bootstrap-3": "37008", // Update with actual port when you get it
-  "bootstrap-4": "19293", // Update with actual port when you get it
+  "bootstrap-3": "37008", //
+  "bootstrap-4": "19293", //
 } as const;
 
 export function getBootstrapNodes() {
