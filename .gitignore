@@ -3,7 +3,7 @@
 .env.agent1
 .env.agent2
 .env.api
-
+.rollup_cache/
 # Bootstrap keys
 bootstrap-keys/
 bootstrap-keys/*

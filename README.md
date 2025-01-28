@@ -36,6 +36,27 @@ pnpm node:agent1
 pnpm explorer
 ```
 
+### Building & Running
+
+```bash
+# Install dependencies
+pnpm install
+
+# Build the node
+pnpm build
+
+# Start the node with default settings
+pnpm start
+
+# Start with specific port and name
+pnpm start -- --port 8000 --name agent1
+
+# Start with env file
+pnpm start -- --env .env.agent1
+```
+
+The node will start a GRPC server on the specified port. You can then connect to it using the GRPC client as shown in the Example Usage section.
+
 ## Architecture
 
 ### DHT (Distributed Hash Table)
@@ -86,99 +107,83 @@ Regular nodes connect to bootstrap nodes first, then discover other peers throug
 
 The P2P node can be run as a standalone executable that communicates via stdin/stdout:
 
-### Protocol
+## Protocol
 
-```typescript
-// Input Commands (stdin)
-type NodeCommand =
-  | { type: "connect"; port: number; bootstrapPeers?: string[] }
-  | { type: "send"; peerId: string; data: any }
-  | { type: "discover"; topic: string }
-  | { type: "subscribe"; topic: string }
-  | { type: "shutdown" };
+The P2P node exposes a GRPC interface for communication:
 
-// Output Events (stdout)
-type NodeEvent =
-  | { type: "ready"; peerId: string }
-  | { type: "message"; from: string; data: any }
-  | { type: "peer_discovered"; peerId: string; topics: string[] }
-  | { type: "error"; code: string; message: string }
-  | {
-      type: "log";
-      level: string;
-      namespace: string;
-      message: string;
-      meta?: any;
-    };
-```
+```protobuf
+service P2PNode {
+  // Connect to the P2P network and receive events
+  rpc Connect(ConnectRequest) returns (stream P2PEvent);
 
-### Building & Running
+  // Send a message to a peer
+  rpc SendMessage(Message) returns (SendResult);
 
-```bash
-# Build the executable
-pnpm build:exe
+  // Stop the P2P node
+  rpc Stop(StopRequest) returns (StopResponse);
+}
 
-# Start with default settings
-./dist/p2p-node
+// Request to connect to the network
+message ConnectRequest {
+  int32 port = 1;
+  string name = 2;
+  string privateKey = 3;
+}
 
-# Start with specific port and name
-./dist/p2p-node -p 8000 -n agent1
+// Events streamed from the node
+message P2PEvent {
+  oneof event {
+    ReadyEvent ready = 1;
+    PeerConnectedEvent peerConnected = 2;
+    ErrorEvent error = 3;
+    MessageEvent message = 4;
+  }
+}
 
-# Start with env file
-./dist/p2p-node -e .env.agent1
+// Message to send to a peer
+message Message {
+  string to = 1;
+  bytes content = 2;
+}
 ```
 
 ### Example Usage
 
 ```typescript
-import { spawn } from "child_process";
+import { createClient } from "./grpc/client";
 
-// Start the node
-const node = spawn("./dist/p2p-node", ["-p", "8000"]);
+async function main() {
+  // Create GRPC client
+  const client = createClient("localhost:8000");
 
-// Send commands
-node.stdin.write(
-  JSON.stringify({
-    type: "connect",
+  // Connect to the network
+  const events = client.connect({
     port: 8000,
-  }) + "\n"
-);
+    name: "agent1",
+    privateKey: process.env.PRIVATE_KEY,
+  });
 
-// Handle events
-node.stdout.on("data", (data) => {
-  const events = data.toString().split("\n").filter(Boolean);
-  for (const event of events) {
-    const parsed = JSON.parse(event);
-    console.log("Received event:", parsed);
+  // Handle events
+  for await (const event of events) {
+    if (event.ready) {
+      console.log("Node ready with peerId:", event.ready.peerId);
+    } else if (event.message) {
+      console.log("Received message:", event.message);
+    }
   }
-});
 
-// Clean shutdown
-process.on("SIGTERM", () => {
-  node.stdin.write(JSON.stringify({ type: "shutdown" }) + "\n");
-});
+  // Send a message
+  const result = await client.sendMessage({
+    to: "targetPeerId",
+    content: Buffer.from("Hello!"),
+  });
+
+  // Clean shutdown
+  await client.stop({});
+}
+
+main().catch(console.error);
 ```
-
-### Error Handling
-
-The executable handles several error cases:
-
-1. **Network Errors**:
-
-   - Connection failures
-   - Peer disconnections
-   - DHT lookup failures
-
-2. **Protocol Errors**:
-
-   - Invalid commands
-   - Malformed JSON
-   - Unknown command types
-
-3. **Resource Errors**:
-   - Port already in use
-   - System resource limits
-   - Memory constraints
 
 ## Development
 
@@ -234,97 +239,3 @@ sequenceDiagram
     Agent2->>Agent2: Verify message signature
     Agent2->>Agent2: Process message
 ```
-
-This diagram shows the key steps:
-
-1. Initial network join where an agent connects to bootstrap nodes and publishes its presence
-2. DHT lookup process when an agent needs to find another peer
-3. Message publishing through GossipSub
-4. Message propagation and verification
-
-## P2P Node Architecture
-
-The P2P node system is designed with a clear separation of concerns:
-
-### Components
-
-1. **P2P Node Binary** (`src/bin/p2p-node.ts`):
-
-   - Standalone executable that runs the P2P network and gRPC server
-   - Uses module detection to prevent double initialization
-   - Only runs its main code when executed directly as a binary
-   - Can be imported without side effects
-
-2. **SDK** (`duck-agents/sdk/src/services/p2p.ts`):
-
-   - Provides `P2PNode` class to manage the P2P node process
-   - Handles spawning and managing the P2P node binary
-   - Provides clean interface for agents to interact with the node
-
-3. **Agent** (`duck-agents/src/agents/agent.ts`):
-   - Uses the SDK to interact with the P2P node
-   - Communicates via gRPC using the SDK's client
-
-### Flow
-
-1. When an agent starts:
-
-   ```typescript
-   // Create and start P2P node via SDK
-   const node = new P2PNode(agentName, grpcPort, privateKey);
-   await node.start();
-
-   // Create and start agent
-   const agent = new Agent(agentName, p2pPort, privateKey);
-   await agent.start();
-   ```
-
-2. The SDK's `P2PNode`:
-
-   - Spawns the P2P node binary as a separate process
-   - Manages its lifecycle
-   - Provides communication interface
-
-3. The P2P node binary:
-   - Runs the actual P2P network
-   - Serves gRPC interface
-   - Only initializes when run directly
-
-### Implementation Details
-
-The P2P node binary uses module detection to prevent double initialization:
-
-```typescript
-// In src/bin/p2p-node.ts
-const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);
-
-// Only run main if this is the main module
-if (isMainModule) {
-  main().catch((error) => {
-    console.error("Fatal error:", error);
-    process.exit(1);
-  });
-}
-
-export { main };
-```
-
-This ensures that:
-
-1. The code only runs when executed as a binary
-2. The module can be imported without side effects
-3. No double initialization occurs
-
-### Usage
-
-To run an agent:
-
-```bash
-pnpm run agent
-```
-
-This will:
-
-1. Start a P2P node process
-2. Create an agent that connects to it
-3. Handle proper cleanup on shutdown

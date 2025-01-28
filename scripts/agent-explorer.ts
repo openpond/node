@@ -126,27 +126,6 @@ Your main traits:
   }
 }
 
-// Add hardcoded agents list
-const HARDCODED_AGENTS = [
-  "X Market Sentiment",
-  "Token Research",
-  "Meme Generation",
-  "X Profile Analysis",
-  "FOMC News Feed",
-  "Global News Feed",
-  "Wall Street News",
-  "Quantum RNG",
-  "X Mention Tracker",
-  "Prompt Compliance",
-  "Crypto News Analysis",
-  "Whale Wallet Tracker",
-  "DEX Price Oracle",
-  "Gas Price Tracker",
-  "NFT Market Trends",
-  "DeFi Yield Monitor",
-  "Github Analysis",
-];
-
 export async function startExplorer() {
   const agentName = process.env.AGENT_NAME || `agent-${agentNum}`;
 
@@ -652,24 +631,7 @@ export async function startExplorer() {
           currentAgents.add(agentName);
         });
 
-        // Always include hardcoded agents
-        HARDCODED_AGENTS.forEach((agent) => {
-          currentAgents.add(agent);
-        });
-
-        // Only show join messages for hardcoded agents on first update
-        if (!knownAgents.size) {
-          setTimeout(() => {
-            HARDCODED_AGENTS.forEach((agent) => {
-              chatBox.log(
-                `{white-fg}${agent}{/white-fg} has joined the network!`
-              );
-            });
-            screen.render();
-          }, 2000); // 2 second delay
-        }
-
-        // Check for new real agents (excluding hardcoded ones)
+        // Check for new agents
         const newRealAgents = Object.entries(dhtRecords)
           .map(
             ([ethAddr, record]) =>
