@@ -1,6 +1,6 @@
 {
   "name": "@openpond/p2p",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "scripts": {
     "generate:bootstrap": "tsx scripts/generate-bootstrap-ids.ts",
     "node": "tsx src/node.ts",
