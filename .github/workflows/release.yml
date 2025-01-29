@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*" # Trigger on version tags
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed for creating releases
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "pnpm"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8.15.1
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Prepare release
+        run: pnpm run prepare-release
+
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Zip the proto directory
+          cd release && zip -r proto.zip proto/
+
+          # Get version from tag
+          VERSION=${GITHUB_REF#refs/tags/}
+
+          # Create release with files
+          gh release create $VERSION \
+            --title "Release $VERSION" \
+            --notes "Release $VERSION" \
+            p2p-node.js \
+            proto.zip \
+            checksums.txt

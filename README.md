@@ -251,3 +251,79 @@ sequenceDiagram
     Agent2->>Agent2: Verify message signature
     Agent2->>Agent2: Process message
 ```
+
+## Release Process
+
+To create a new release:
+
+1. First time setup (only needed once):
+
+   ```bash
+   # Connect your local branch to the remote repository
+   git push --set-upstream origin master
+   ```
+
+2. Make your changes and test them locally
+
+   ```bash
+   # Make your changes
+   git add .
+   git commit -m "your changes"
+
+   # Build and test
+   pnpm run build
+   # Test the built version
+   ```
+
+3. Create a new release:
+
+   ```bash
+   # For a patch version (0.1.0 -> 0.1.1)
+   pnpm run release
+
+   # For a minor version (0.1.0 -> 0.2.0)
+   pnpm run release minor
+
+   # For a major version (0.1.0 -> 1.0.0)
+   pnpm run release major
+   ```
+
+This will:
+
+- Bump the version in package.json
+- Create a git commit
+- Create a git tag (e.g., v0.1.1)
+- Push changes and tag to GitHub
+
+The GitHub Actions workflow will automatically:
+
+- Build the project
+- Create a GitHub release
+- Upload the release files:
+  - `p2p-node.js` - The bundled node file
+  - `proto.zip` - Protocol buffer definitions
+  - `checksums.txt` - SHA256 checksums for verification
+
+### Troubleshooting
+
+If you see an error about "no upstream branch", run:
+
+```bash
+git push --set-upstream origin master
+```
+
+Then run `pnpm run release` again.
+
+### Using the Released Version
+
+To use a specific release in another project:
+
+```json
+{
+  "dependencies": {
+    "@openpond/p2p": "github:duckai/node#v0.1.1"
+  }
+}
+```
+
+Replace `v0.1.1` with the desired version tag.
