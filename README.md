@@ -256,21 +256,10 @@ sequenceDiagram
 
 To create a new release:
 
-1. First time setup (only needed once):
+1. Make your changes and test them locally
+2. Build and test the bundled version:
 
    ```bash
-   # Connect your local branch to the remote repository
-   git push --set-upstream origin master
-   ```
-
-2. Make your changes and test them locally
-
-   ```bash
-   # Make your changes
-   git add .
-   git commit -m "your changes"
-
-   # Build and test
    pnpm run build
    # Test the built version
    ```
@@ -303,16 +292,6 @@ The GitHub Actions workflow will automatically:
   - `p2p-node.js` - The bundled node file
   - `proto.zip` - Protocol buffer definitions
   - `checksums.txt` - SHA256 checksums for verification
-
-### Troubleshooting
-
-If you see an error about "no upstream branch", run:
-
-```bash
-git push --set-upstream origin master
-```
-
-Then run `pnpm run release` again.
 
 ### Using the Released Version
 
