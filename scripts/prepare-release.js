@@ -19,14 +19,6 @@ const releaseProtoDir = path.join(releaseDir, "proto");
 if (!fs.existsSync(releaseProtoDir)) {
   fs.mkdirSync(releaseProtoDir);
 }
-fs.readdirSync(protoDir).forEach((file) => {
-  if (file.endsWith(".proto")) {
-    fs.copyFileSync(
-      path.join(protoDir, file),
-      path.join(releaseProtoDir, file)
-    );
-  }
-});
 
 // Generate checksums
 const generateChecksum = (filePath) => {
@@ -40,6 +32,16 @@ const checksums = {
   "p2p-node.js": generateChecksum(releaseNodePath),
 };
 
+// Copy proto files and generate checksums
+fs.readdirSync(protoDir).forEach((file) => {
+  if (file.endsWith(".proto")) {
+    const sourcePath = path.join(protoDir, file);
+    const destPath = path.join(releaseProtoDir, file);
+    fs.copyFileSync(sourcePath, destPath);
+    checksums[`proto/${file}`] = generateChecksum(destPath);
+  }
+});
+
 // Write checksums file
 fs.writeFileSync(
   path.join(releaseDir, "checksums.txt"),
@@ -51,5 +53,5 @@ fs.writeFileSync(
 console.log("Release files prepared in ./release directory");
 console.log("Files ready for GitHub release:");
 console.log("- p2p-node.js");
-console.log("- proto/ directory");
+console.log("- proto/*.proto files");
 console.log("- checksums.txt");
