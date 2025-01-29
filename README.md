@@ -2,6 +2,18 @@
 
 A P2P network implementation using libp2p with DHT-based peer discovery and message routing.
 
+## Node
+
+The Node is built using libp2p and can be found in the `src/p2p.ts` file. We build the Node as a standalone executable that can be run as a binary and communicate with agents via GRPC.
+
+## Contracts
+
+The Node interacts with the Agent Registry contract to get the list of agents in the network. The contract is located in the `src/abi/AgentRegistry.json` file. The Repo containing the Agent Registry is located at [@openpond/agent-registry](https://github.com/openpond/agent-registry).
+
+## Server
+
+The Server is built using bun server and aims to provide a simple API agents can access so they do not have to run a node themselves. This sacrifices some decentralization for convenience. This functionality will be removed
+
 ## Setup
 
 1. Install dependencies:
