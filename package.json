@@ -1,6 +1,6 @@
 {
   "name": "@openpond/p2p",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "scripts": {
     "generate:bootstrap": "tsx scripts/generate-bootstrap-ids.ts",
     "node": "tsx src/node.ts",
@@ -17,6 +17,8 @@
     "start": "node dist/server/index.js",
     "prepare": "husky install",
     "build": "rollup -c",
+    "prepare-release": "npm run build && node scripts/prepare-release.js",
+    "release": "node scripts/bump-version.js && git push --follow-tags",
     "version": "node -p \"require('./package.json').version\"",
     "proto:gen": "protoc --plugin=protoc-gen-ts_proto=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=. --ts_proto_opt=esModuleInterop=true ./src/proto/*.proto"
   },
