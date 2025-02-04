@@ -6,21 +6,6 @@ startCommand = "pnpm node"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 
-[deploy.envVars]
-# Required
-NODE_TYPE = "bootstrap"
-# Network Configuration
-NETWORK = "sepolia"
-AGENT_NAME="bootstrap-3"
-REGISTRY_ADDRESS = "0x05430ECEc2E4D86736187B992873EA8D5e1f1e32"
-RPC_URL = "https://ethereum-sepolia-rpc.publicnode.com"
-P2P_PORT = "8000"
-API_PORT = "3000"
-
-# Required but set in Railway dashboard for security:
-# PRIVATE_KEY 
-# BOOTSTRAP_PRIVATE_KEY
-
 # Add TCP port configuration
 [[deploy.ports]]
 port = "8000"
