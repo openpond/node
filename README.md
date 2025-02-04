@@ -300,7 +300,7 @@ To use a specific release in another project:
 ```json
 {
   "dependencies": {
-    "@openpond/p2p": "github:duckai/node#v0.1.1"
+    "@duckailabs/node": "github:duckailabs/node#v0.1.1"
   }
 }
 ```

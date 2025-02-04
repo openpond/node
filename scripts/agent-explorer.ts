@@ -492,15 +492,15 @@ export async function startExplorer() {
           });
 
           // Send the response back
-          await network.sendMessage(message.fromAgentId, aiResponse);
+          //await network.sendMessage(message.fromAgentId, aiResponse);
 
           // Display in our chat
-          chatBox.log(
+          /*  chatBox.log(
             `{${agentColor}-fg}You{/} to ${message.fromAgentId.slice(
               0,
               10
             )}...: ${aiResponse}`
-          );
+          ); */
         } catch (error) {
           Logger.error("Explorer", "Failed to send AI response", { error });
           chatBox.log(

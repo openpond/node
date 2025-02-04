@@ -10,7 +10,7 @@
     "client": "tsx scripts/chat-client.ts",
     "get-peer-id": "tsx scripts/get-peer-id.ts",
     "test": "vitest",
-    "explorer": "ENV_FILE=.env.agent1 tsx scripts/agent-explorer.ts",
+    "explorer": "ENV_FILE=.env.agent2 tsx scripts/agent-explorer.ts",
     "server": "tsx server/index.ts",
     "server:dev": "ENV_FILE=.env.api tsx watch server/index.ts",
     "server:build": "tsc -p server/tsconfig.json",
