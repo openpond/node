@@ -2,7 +2,7 @@ import "./polyfills"; // Must be first import to ensure libp2p has access to Cus
 
 import { config as dotenvConfig } from "dotenv";
 import path from "path";
-import { BOOTSTRAP_PEER_IDS, getBootstrapKey } from "./constants";
+import { getBootstrapKey, getBootstrapPeerId } from "./constants";
 import { NetworkName } from "./networks";
 import { P2PNetwork } from "./p2p";
 import { Logger } from "./utils/logger";
@@ -90,8 +90,10 @@ async function initNode() {
   if (config.nodeType === "bootstrap") {
     Logger.info("Node", "Starting bootstrap node", {
       name: config.name,
-      expectedPeerId:
-        BOOTSTRAP_PEER_IDS[config.name as keyof typeof BOOTSTRAP_PEER_IDS],
+      expectedPeerId: getBootstrapPeerId(
+        config.network as NetworkName,
+        config.name
+      ),
     });
 
     Logger.info("Node", "Bootstrap node started", {
