@@ -43,7 +43,7 @@ const BOOTSTRAP_PORTS = {
     "bootstrap-4": "19293", //
   },
   sepolia: {
-    "bootstrap-1": "14220", // Port for us-east
+    "bootstrap-1": "30110", // Port for us-east
     "bootstrap-2": "43343", // Port for us-west
     "bootstrap-3": "37008", //
     "bootstrap-4": "19293", //
