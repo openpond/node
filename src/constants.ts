@@ -1,8 +1,7 @@
 import { privateKeyFromProtobuf } from "@libp2p/crypto/keys";
 import type { PrivateKey } from "@libp2p/interface";
 import { fromString as uint8ArrayFromString } from "uint8arrays/from-string";
-
-export type Network = "base" | "sepolia";
+import { Network } from "./networks";
 
 // Bootstrap node configurations
 const BOOTSTRAP_URLS = {
@@ -45,7 +44,7 @@ const BOOTSTRAP_PORTS = {
   sepolia: {
     "bootstrap-1": "30110", // Port for us-east
     "bootstrap-2": "50421", // Port for us-west
-    "bootstrap-3": "37008", // Port for eu-west
+    "bootstrap-3": "31509", // Port for eu-west
     "bootstrap-4": "19293", // Port for sea
   },
 } as const;

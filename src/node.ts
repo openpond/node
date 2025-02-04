@@ -3,7 +3,7 @@ import "./polyfills"; // Must be first import to ensure libp2p has access to Cus
 import { config as dotenvConfig } from "dotenv";
 import path from "path";
 import { getBootstrapKey, getBootstrapPeerId } from "./constants";
-import { NetworkName } from "./networks";
+import { getRpcUrl, Network, NetworkName } from "./networks";
 import { P2PNetwork } from "./p2p";
 import { Logger } from "./utils/logger";
 
@@ -32,7 +32,9 @@ const config = {
   registryAddress:
     process.env.REGISTRY_ADDRESS ||
     "0x05430ECEc2E4D86736187B992873EA8D5e1f1e32",
-  rpcUrl: process.env.RPC_URL || "https://mainnet.base.org",
+  rpcUrl:
+    process.env.RPC_URL ||
+    getRpcUrl((process.env.NETWORK as Network) || "base"),
   network: process.env.NETWORK || "base",
   version: process.env.VERSION || "1.0.0",
   metadata: process.env.METADATA ? JSON.parse(process.env.METADATA) : {},
