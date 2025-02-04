@@ -45,7 +45,7 @@ const BOOTSTRAP_PORTS = {
     "bootstrap-1": "30110", // Port for us-east
     "bootstrap-2": "50421", // Port for us-west
     "bootstrap-3": "31509", // Port for eu-west
-    "bootstrap-4": "19293", // Port for sea
+    "bootstrap-4": "24366", // Port for sea
   },
 } as const;
 
