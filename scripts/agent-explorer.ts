@@ -4,6 +4,7 @@ import { config } from "dotenv";
 import fs from "fs/promises";
 import OpenAI from "openai";
 import path from "path";
+import { Network } from "../src/networks.js";
 import { P2PNetwork } from "../src/p2p.js";
 import { Logger } from "../src/utils/logger.js";
 
@@ -405,7 +406,8 @@ export async function startExplorer() {
       "1.0.0",
       {},
       process.env.REGISTRY_ADDRESS,
-      process.env.RPC_URL
+      process.env.RPC_URL,
+      process.env.NETWORK as Network
     );
 
     // Log when network is started

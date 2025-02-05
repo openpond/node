@@ -4,12 +4,7 @@
   "scripts": {
     "generate:bootstrap": "tsx scripts/generate-bootstrap-ids.ts",
     "node": "tsx src/node.ts",
-    "node:agent1": "ENV_FILE=.env.agent1 tsx src/node.ts",
-    "node:agent2": "ENV_FILE=.env.agent2 tsx src/node.ts",
-    "node:agent3": "ENV_FILE=.env.agent3 tsx src/node.ts",
-    "client": "tsx scripts/chat-client.ts",
     "get-peer-id": "tsx scripts/get-peer-id.ts",
-    "test": "vitest",
     "explorer": "ENV_FILE=.env.agent2 tsx scripts/agent-explorer.ts",
     "server": "tsx server/index.ts",
     "server:dev": "ENV_FILE=.env.api tsx watch server/index.ts",
