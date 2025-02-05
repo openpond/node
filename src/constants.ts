@@ -1,34 +1,65 @@
 import { privateKeyFromProtobuf } from "@libp2p/crypto/keys";
 import type { PrivateKey } from "@libp2p/interface";
 import { fromString as uint8ArrayFromString } from "uint8arrays/from-string";
+import { Network } from "./networks";
 
 // Bootstrap node configurations
-export const BOOTSTRAP_URLS = {
-  "bootstrap-1": "us-east.hosting.openpond.ai",
-  "bootstrap-2": "us-west.hosting.openpond.ai",
-  "bootstrap-3": "eu-west.hosting.openpond.ai",
-  "bootstrap-4": "sea.hosting.openpond.ai",
+const BOOTSTRAP_URLS = {
+  base: {
+    "bootstrap-1": "us-east.hosting.openpond.ai",
+    "bootstrap-2": "us-west.hosting.openpond.ai",
+    "bootstrap-3": "eu-west.hosting.openpond.ai",
+    "bootstrap-4": "sea.hosting.openpond.ai",
+  },
+  sepolia: {
+    "bootstrap-1": "us-east.sepolia.openpond.ai",
+    "bootstrap-2": "us-west.sepolia.openpond.ai",
+    "bootstrap-3": "eu-west.sepolia.openpond.ai",
+    "bootstrap-4": "sea.sepolia.openpond.ai",
+  },
 } as const;
 
-export const BOOTSTRAP_PEER_IDS = {
-  "bootstrap-1": "16Uiu2HAmDD9JV9oqwTGiZzMJzEZJPA6hgrUyzSXdcqpnVhUJ2eXa",
-  "bootstrap-2": "16Uiu2HAkz9FFsJDhfx2658VXcmeooxtqPqtMYWUG5nJRXBWH45zc",
-  "bootstrap-3": "16Uiu2HAkwbtWw6HueqKdCK58oFKhfcpGL4bBJ4f6zndiD6mjmH4g",
-  "bootstrap-4": "16Uiu2HAm3rX7ZXyLo3FRNstXYWNZE55r8pRoXLzvSauNGEmkVLnh",
+const BOOTSTRAP_PEER_IDS = {
+  base: {
+    "bootstrap-1": "16Uiu2HAmDD9JV9oqwTGiZzMJzEZJPA6hgrUyzSXdcqpnVhUJ2eXa",
+    "bootstrap-2": "16Uiu2HAkz9FFsJDhfx2658VXcmeooxtqPqtMYWUG5nJRXBWH45zc",
+    "bootstrap-3": "16Uiu2HAkwbtWw6HueqKdCK58oFKhfcpGL4bBJ4f6zndiD6mjmH4g",
+    "bootstrap-4": "16Uiu2HAm3rX7ZXyLo3FRNstXYWNZE55r8pRoXLzvSauNGEmkVLnh",
+  },
+  sepolia: {
+    "bootstrap-1": "16Uiu2HAmDD9JV9oqwTGiZzMJzEZJPA6hgrUyzSXdcqpnVhUJ2eXa",
+    "bootstrap-2": "16Uiu2HAkz9FFsJDhfx2658VXcmeooxtqPqtMYWUG5nJRXBWH45zc",
+    "bootstrap-3": "16Uiu2HAkwbtWw6HueqKdCK58oFKhfcpGL4bBJ4f6zndiD6mjmH4g",
+    "bootstrap-4": "16Uiu2HAm3rX7ZXyLo3FRNstXYWNZE55r8pRoXLzvSauNGEmkVLnh",
+  },
 } as const;
 
-export const BOOTSTRAP_PORTS = {
-  "bootstrap-1": "14220", // Port for us-east
-  "bootstrap-2": "43343", // Port for us-west
-  "bootstrap-3": "37008", //
-  "bootstrap-4": "19293", //
+const BOOTSTRAP_PORTS = {
+  base: {
+    "bootstrap-1": "14220", // Port for us-east
+    "bootstrap-2": "43343", // Port for us-west
+    "bootstrap-3": "37008", // Port for eu-west
+    "bootstrap-4": "19293", // Port for sea
+  },
+  sepolia: {
+    "bootstrap-1": "30110", // Port for us-east
+    "bootstrap-2": "50421", // Port for us-west
+    "bootstrap-3": "31509", // Port for eu-west
+    "bootstrap-4": "24366", // Port for sea
+  },
 } as const;
 
-export function getBootstrapNodes() {
-  return Object.entries(BOOTSTRAP_PEER_IDS).map(
+export function getBootstrapNodes(network: Network) {
+  return Object.entries(BOOTSTRAP_PEER_IDS[network]).map(
     ([name, peerId]) =>
-      `/dns4/${BOOTSTRAP_URLS[name as keyof typeof BOOTSTRAP_URLS]}/tcp/${
-        BOOTSTRAP_PORTS[name as keyof typeof BOOTSTRAP_PORTS]
+      `/dns4/${
+        BOOTSTRAP_URLS[network][
+          name as keyof (typeof BOOTSTRAP_URLS)[typeof network]
+        ]
+      }/tcp/${
+        BOOTSTRAP_PORTS[network][
+          name as keyof (typeof BOOTSTRAP_PORTS)[typeof network]
+        ]
       }/p2p/${peerId}`
   );
 }
@@ -48,4 +79,22 @@ export async function getBootstrapKey(agentName: string): Promise<PrivateKey> {
       `Failed to decode bootstrap key for ${agentName}: ${error}`
     );
   }
+}
+
+export function getBootstrapPort(network: Network, name: string) {
+  return BOOTSTRAP_PORTS[network][
+    name as keyof (typeof BOOTSTRAP_PORTS)[typeof network]
+  ];
+}
+
+export function getBootstrapHostname(network: Network, name: string) {
+  return BOOTSTRAP_URLS[network][
+    name as keyof (typeof BOOTSTRAP_URLS)[typeof network]
+  ];
+}
+
+export function getBootstrapPeerId(network: Network, name: string) {
+  return BOOTSTRAP_PEER_IDS[network][
+    name as keyof (typeof BOOTSTRAP_PEER_IDS)[typeof network]
+  ];
 }

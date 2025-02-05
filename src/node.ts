@@ -2,8 +2,8 @@ import "./polyfills"; // Must be first import to ensure libp2p has access to Cus
 
 import { config as dotenvConfig } from "dotenv";
 import path from "path";
-import { BOOTSTRAP_PEER_IDS, getBootstrapKey } from "./constants";
-import { NetworkName } from "./networks";
+import { getBootstrapKey, getBootstrapPeerId } from "./constants";
+import { getRpcUrl, Network, NetworkName } from "./networks";
 import { P2PNetwork } from "./p2p";
 import { Logger } from "./utils/logger";
 
@@ -32,7 +32,9 @@ const config = {
   registryAddress:
     process.env.REGISTRY_ADDRESS ||
     "0x05430ECEc2E4D86736187B992873EA8D5e1f1e32",
-  rpcUrl: process.env.RPC_URL || "https://mainnet.base.org",
+  rpcUrl:
+    process.env.RPC_URL ||
+    getRpcUrl((process.env.NETWORK as Network) || "base"),
   network: process.env.NETWORK || "base",
   version: process.env.VERSION || "1.0.0",
   metadata: process.env.METADATA ? JSON.parse(process.env.METADATA) : {},
@@ -90,8 +92,10 @@ async function initNode() {
   if (config.nodeType === "bootstrap") {
     Logger.info("Node", "Starting bootstrap node", {
       name: config.name,
-      expectedPeerId:
-        BOOTSTRAP_PEER_IDS[config.name as keyof typeof BOOTSTRAP_PEER_IDS],
+      expectedPeerId: getBootstrapPeerId(
+        config.network as NetworkName,
+        config.name
+      ),
     });
 
     Logger.info("Node", "Bootstrap node started", {

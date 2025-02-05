@@ -4,6 +4,7 @@ import { config } from "dotenv";
 import fs from "fs/promises";
 import OpenAI from "openai";
 import path from "path";
+import { Network } from "../src/networks.js";
 import { P2PNetwork } from "../src/p2p.js";
 import { Logger } from "../src/utils/logger.js";
 
@@ -405,7 +406,8 @@ export async function startExplorer() {
       "1.0.0",
       {},
       process.env.REGISTRY_ADDRESS,
-      process.env.RPC_URL
+      process.env.RPC_URL,
+      process.env.NETWORK as Network
     );
 
     // Log when network is started
@@ -492,15 +494,15 @@ export async function startExplorer() {
           });
 
           // Send the response back
-          await network.sendMessage(message.fromAgentId, aiResponse);
+          //await network.sendMessage(message.fromAgentId, aiResponse);
 
           // Display in our chat
-          chatBox.log(
+          /*  chatBox.log(
             `{${agentColor}-fg}You{/} to ${message.fromAgentId.slice(
               0,
               10
             )}...: ${aiResponse}`
-          );
+          ); */
         } catch (error) {
           Logger.error("Explorer", "Failed to send AI response", { error });
           chatBox.log(

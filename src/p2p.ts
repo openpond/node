@@ -17,7 +17,11 @@ import secp256k1 from "secp256k1";
 import { Chain, createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import AgentRegistryABI from "./abi/AgentRegistry.json" assert { type: "json" };
-import { BOOTSTRAP_PORTS, getBootstrapNodes } from "./constants";
+import {
+  getBootstrapHostname,
+  getBootstrapNodes,
+  getBootstrapPort,
+} from "./constants";
 import { NetworkName, networks } from "./networks";
 import { Logger } from "./utils/logger";
 const { publicKeyCreate } = secp256k1;
@@ -161,17 +165,19 @@ export class P2PNetwork extends EventEmitter {
     this.publicKey = publicKeyCreate(new Uint8Array(privKeyBuffer), false);
 
     // Set bootstrap mode based on the agent's address, not the name
-    const bootstrapAddresses = getBootstrapNodes().map((node) => {
-      const [_, addr] = node.split("/p2p/");
-      return addr;
-    });
+    const bootstrapAddresses = getBootstrapNodes(this.networkName).map(
+      (node) => {
+        const [_, addr] = node.split("/p2p/");
+        return addr;
+      }
+    );
     this.bootstrapMode = bootstrapAddresses.includes(
       this.account.address.toLowerCase()
     );
 
     // Set bootstrap nodes if we're not a bootstrap node
     if (!this.bootstrapMode) {
-      this.bootstrapNodes = getBootstrapNodes();
+      this.bootstrapNodes = getBootstrapNodes(this.networkName);
     }
   }
 
@@ -235,16 +241,8 @@ export class P2PNetwork extends EventEmitter {
 
       // If we're a bootstrap node, announce our public address
       if (this.agentName.startsWith("bootstrap-")) {
-        const port =
-          BOOTSTRAP_PORTS[this.agentName as keyof typeof BOOTSTRAP_PORTS];
-        const hostname =
-          this.agentName === "bootstrap-1"
-            ? "us-east.hosting.openpond.ai"
-            : this.agentName === "bootstrap-2"
-            ? "us-west.hosting.openpond.ai"
-            : this.agentName === "bootstrap-3"
-            ? "eu-west.hosting.openpond.ai"
-            : "sea.hosting.openpond.ai";
+        const port = getBootstrapPort(this.networkName, this.agentName);
+        const hostname = getBootstrapHostname(this.networkName, this.agentName);
 
         Logger.info(
           "P2P",
@@ -1449,7 +1447,7 @@ export class P2PNetwork extends EventEmitter {
   public async startDiscovery() {
     // Bootstrap nodes should connect to each other and share records
     if (this.agentName.startsWith("bootstrap-")) {
-      const otherBootstrapNodes = getBootstrapNodes().filter(
+      const otherBootstrapNodes = getBootstrapNodes(this.networkName).filter(
         (addr) => !addr.includes(this.node.peerId.toString())
       );
 

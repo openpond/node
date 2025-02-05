@@ -300,9 +300,19 @@ To use a specific release in another project:
 ```json
 {
   "dependencies": {
-    "@openpond/p2p": "github:duckai/node#v0.1.1"
+    "@duckailabs/node": "github:duckailabs/node#v0.1.1"
   }
 }
 ```
 
 Replace `v0.1.1` with the desired version tag.
+
+### Deploy to a new network
+
+1. Create a new network in the `networks.ts` file
+2. Update the `constants.ts` file with the new network's bootstrap nodes
+3. Add a new folder to the `deploy` folder
+4. Deploy to railway
+   1. select railway toml
+   2. setup private key and bootstrap private key
+5. Setup dns hosting in railway, add to dns provider, and update `constants.ts`
