@@ -15,7 +15,7 @@ import {
   SendResult,
   StopRequest,
   StopResponse,
-} from "../proto/p2p";
+} from "../proto/p2p-proto";
 import { Logger } from "../utils/logger";
 
 export class P2PGrpcService {
@@ -349,6 +349,41 @@ export class P2PGrpcService {
       });
     }
   }
+
+  async ListAgents(
+    call: ServerUnaryCall<any, unknown>,
+    callback: sendUnaryData<any>
+  ) {
+    try {
+      if (!this.network) {
+        throw new Error("Network not started");
+      }
+
+      // Get records from the P2P network's DHT
+      const dhtRecords = await this.network.getDHTRecords();
+
+      // Transform records into agents array with correct field names
+      const agents = Object.entries(dhtRecords).map(([ethAddr, record]) => ({
+        agent_id: ethAddr,
+        agent_name: record.agentName || `Agent ${ethAddr.slice(0, 6)}`,
+        peer_id: record.peerId,
+        connected_since: record.timestamp || Date.now(),
+      }));
+
+      // Just log the count of agents found
+      Logger.info("gRPC", "Listed agents", {
+        count: agents.length,
+      });
+
+      callback(null, { agents });
+    } catch (error) {
+      Logger.error("gRPC", "Failed to list agents", { error });
+      callback({
+        code: 13, // INTERNAL
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
 }
 
 export async function startGrpcServer(
@@ -375,6 +410,7 @@ export async function startGrpcServer(
     Connect: service.Connect.bind(service),
     SendMessage: service.SendMessage.bind(service),
     Stop: service.Stop.bind(service),
+    ListAgents: service.ListAgents.bind(service),
   });
 
   await new Promise<void>((resolve, reject) => {

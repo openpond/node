@@ -28,7 +28,6 @@ rm -rf ../duck-agents/sdk/src/proto/*
 echo "📋 Copying proto files to duck-agents..."
 mkdir -p ../duck-agents/sdk/src/proto/proto
 cp src/proto/p2p.proto ../duck-agents/sdk/src/proto/
-cp src/proto/p2p.ts ../duck-agents/sdk/src/proto/
 
 # Copy gRPC server binary to duck-agents
 echo "📦 Copying gRPC server to duck-agents/sdk..."

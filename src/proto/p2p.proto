@@ -11,6 +11,9 @@ service P2PNode {
   
   // Stop the P2P node
   rpc Stop(StopRequest) returns (StopResponse);
+
+  // List all known agents in the network
+  rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
 }
 
 message ConnectRequest {
@@ -60,4 +63,17 @@ message SendResult {
 
 message StopRequest {}
 
-message StopResponse {} 
+message StopResponse {}
+
+message ListAgentsRequest {}
+
+message AgentInfo {
+  string agent_id = 1;
+  string peer_id = 2;
+  string agent_name = 3;
+  int64 connected_since = 4;
+}
+
+message ListAgentsResponse {
+  repeated AgentInfo agents = 1;
+} 
