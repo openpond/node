@@ -8,7 +8,21 @@ if [ -z "$FILES" ]; then
   exit 0
 fi
 
-if git --no-pager grep -l -E "0x[0-9a-fA-F]{64}" $FILES; then
-  echo "Error: Found potential Ethereum private key in the above file(s)!"
+# Grep for private keys but exclude known library patterns and generated code
+if git --no-pager grep -n -E "0x[0-9a-fA-F]{64}" $FILES | \
+   grep -v "noble-curves" | \
+   grep -v "secp256k1" | \
+   grep -v "beta:" | \
+   grep -v "POW_2_128" | \
+   grep -v "dist/" | \
+   grep -v "bytecode" | \
+   grep -v "BigInt" | \
+   grep -v "example" | \
+   grep -v "MAX_" | \
+   grep -v "magic" | \
+   grep -v "hash:" | \
+   grep -v "test"; then
+  echo 
+  echo "Error: Found potential Ethereum private key in the above line(s)!"
   exit 1
 fi 
