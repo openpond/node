@@ -42,6 +42,14 @@ fs.readdirSync(protoDir).forEach((file) => {
   }
 });
 
+// Copy the TypeScript proto file
+const tsProtoPath = path.join(process.cwd(), "src", "p2p-proto.ts");
+if (fs.existsSync(tsProtoPath)) {
+  const tsDestPath = path.join(releaseDir, "p2p-proto.ts");
+  fs.copyFileSync(tsProtoPath, tsDestPath);
+  checksums["p2p-proto.ts"] = generateChecksum(tsDestPath);
+}
+
 // Write checksums file
 fs.writeFileSync(
   path.join(releaseDir, "checksums.txt"),
@@ -54,4 +62,5 @@ console.log("Release files prepared in ./release directory");
 console.log("Files ready for GitHub release:");
 console.log("- p2p-node.js");
 console.log("- proto/*.proto files");
+console.log("- proto/*.ts files");
 console.log("- checksums.txt");
