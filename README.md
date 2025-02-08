@@ -290,6 +290,8 @@ The GitHub Actions workflow will automatically:
 - Create a GitHub release
 - Upload the release files:
   - `p2p-node.js` - The bundled node file
+  - `proto/p2p.proto` - Protocol buffer definitions
+  - `proto/p2p.ts` - Protocol buffer TypeScript definitions
   - `proto.zip` - Protocol buffer definitions
   - `checksums.txt` - SHA256 checksums for verification
 
