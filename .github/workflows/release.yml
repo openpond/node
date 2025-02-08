@@ -57,5 +57,5 @@ jobs:
             --notes "Release $VERSION" \
             release/p2p-node.js \
             release/proto/*.proto \
-            release/p2p-proto.ts \
+            release/proto/p2p-proto.ts \
             release/checksums.txt
