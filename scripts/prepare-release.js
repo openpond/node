@@ -43,11 +43,11 @@ fs.readdirSync(protoDir).forEach((file) => {
 });
 
 // Copy the TypeScript proto file
-const tsProtoPath = path.join(process.cwd(), "src", "proto", "p2p.ts");
+const tsProtoPath = path.join(protoDir, "p2p-proto.ts");
 if (fs.existsSync(tsProtoPath)) {
-  const tsDestPath = path.join(releaseDir, "p2p-proto.ts");
+  const tsDestPath = path.join(releaseProtoDir, "p2p-proto.ts");
   fs.copyFileSync(tsProtoPath, tsDestPath);
-  checksums["p2p-proto.ts"] = generateChecksum(tsDestPath);
+  checksums["proto/p2p-proto.ts"] = generateChecksum(tsDestPath);
 }
 
 // Write checksums file
