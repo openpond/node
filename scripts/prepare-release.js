@@ -43,7 +43,7 @@ fs.readdirSync(protoDir).forEach((file) => {
 });
 
 // Copy the TypeScript proto file
-const tsProtoPath = path.join(process.cwd(), "src", "p2p-proto.ts");
+const tsProtoPath = path.join(process.cwd(), "src", "proto", "p2p.ts");
 if (fs.existsSync(tsProtoPath)) {
   const tsDestPath = path.join(releaseDir, "p2p-proto.ts");
   fs.copyFileSync(tsProtoPath, tsDestPath);
