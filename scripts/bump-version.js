@@ -10,6 +10,16 @@ if (!versionType || !["patch", "minor", "major"].includes(versionType)) {
 }
 
 try {
+  // First ensure we're up to date with master
+  console.log("Updating master branch...");
+  execSync("git checkout master");
+  execSync("git pull");
+
+  // Create a new version bump branch
+  const bumpBranch = `chore/bump-version-${Date.now()}`;
+  console.log(`Creating branch: ${bumpBranch}`);
+  execSync(`git checkout -b ${bumpBranch}`);
+
   // Check for uncommitted changes
   const status = execSync("git status --porcelain").toString().trim();
   if (status) {
@@ -17,15 +27,6 @@ try {
       "Error: You have uncommitted changes. Please commit or stash them first."
     );
     console.error(status);
-    process.exit(1);
-  }
-
-  // Make sure we're on main/master and up to date
-  const currentBranch = execSync("git branch --show-current").toString().trim();
-  if (currentBranch !== "main" && currentBranch !== "master") {
-    console.error(
-      `Not on main/master branch. Current branch: ${currentBranch}`
-    );
     process.exit(1);
   }
 
@@ -57,16 +58,21 @@ try {
     JSON.stringify(packageJson, null, 2) + "\n"
   );
 
-  // Commit, tag and push
+  // Commit and push the branch
   execSync("git add package.json");
   execSync(`git commit -m "chore: release ${newVersion}"`);
-  execSync(`git tag -a v${newVersion} -m "Release ${newVersion}"`);
-  execSync("git push --follow-tags");
+  execSync(`git push -u origin ${bumpBranch}`);
 
-  console.log(`\nReleased v${newVersion}`);
-  console.log("GitHub Actions will create the release at:");
-  console.log("https://github.com/openpond/p2p/actions");
+  console.log("\n✨ Version bump ready!");
+  console.log("Next steps:");
+  console.log(
+    `1. Create PR: https://github.com/openpond/p2p/compare/master...${bumpBranch}`
+  );
+  console.log("2. After PR is merged, run:");
+  console.log(
+    `   git checkout master && git pull && git tag -a v${newVersion} -m "Release ${newVersion}" && git push --follow-tags`
+  );
 } catch (error) {
-  console.error("Error:", error.message);
+  console.error("Error during version bump:", error.message);
   process.exit(1);
 }
