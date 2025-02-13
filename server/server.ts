@@ -41,7 +41,7 @@ export class APIServer {
     private nodePrivateKey: string,
     private registryAddress: string,
     private rpcUrl: string,
-    private network: "base" | "mode" = "base"
+    private network: "base" | "sepolia" = "base"
   ) {
     this.app = express();
     this.connectedClients = new Map();
@@ -64,7 +64,7 @@ export class APIServer {
       registryAddress,
       rpcUrl,
       network,
-      true // Use encryption
+      true
     );
 
     this.setupExpress();
@@ -309,17 +309,13 @@ export class APIServer {
       const { to, content, conversationId, replyTo } =
         req.body as MessageRequest;
 
-      // Get sender ID - either agent ID or temporary ID
-      const senderId = req.headers["x-agent-id"] || req.headers["x-temp-id"];
-
-      if (!senderId) {
-        return res.status(400).json({ error: "No sender ID found" });
-      }
-
       // Send message through P2P network
       await this.p2p.sendMessage(to, content, conversationId, replyTo);
 
-      Logger.info("API", "Message sent", { from: senderId, to });
+      Logger.info("API", "Message sent", {
+        from: req.headers["x-agent-id"] as string,
+        to,
+      });
       res.json({ success: true });
     } catch (error) {
       Logger.error("API", "Send message error", { error });

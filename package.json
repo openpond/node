@@ -6,9 +6,8 @@
     "node": "tsx src/node.ts",
     "get-peer-id": "tsx scripts/get-peer-id.ts",
     "explorer": "ENV_FILE=.env.agent2 tsx scripts/agent-explorer.ts",
-    "server": "tsx server/index.ts",
-    "server:dev": "ENV_FILE=.env.api tsx watch server/index.ts",
-    "server:build": "tsc -p server/tsconfig.json",
+    "server": "ENV_FILE=./server/.env.api tsx server/index.ts",
+    "server:dev": "ENV_FILE=./server/.env.api tsx watch server/index.ts",
     "start": "node dist/server/index.js",
     "prepare": "husky install",
     "build": "rollup -c",
@@ -17,7 +16,8 @@
     "release:minor": "node scripts/bump-version.js minor && git push --follow-tags",
     "release:major": "node scripts/bump-version.js major && git push --follow-tags",
     "version": "node -p \"require('./package.json').version\"",
-    "proto:gen": "protoc --plugin=protoc-gen-ts_proto=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=. --ts_proto_opt=esModuleInterop=true ./src/proto/*.proto"
+    "proto:gen": "protoc --plugin=protoc-gen-ts_proto=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=. --ts_proto_opt=esModuleInterop=true ./src/proto/*.proto",
+    "test:messages": "ENV_FILE=./server/.env.api tsx scripts/test-messages.ts"
   },
   "dependencies": {
     "@chainsafe/libp2p-gossipsub": "^14.1.0",
@@ -45,6 +45,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "eciesjs": "^0.4.13",
+    "eventsource": "^3.0.5",
     "express": "^4.18.2",
     "libp2p": "^2.3.1",
     "long": "^5.2.3",
@@ -66,6 +67,7 @@
     "@types/chalk": "^2.2.4",
     "@types/cors": "^2.8.17",
     "@types/dotenv": "^8.2.3",
+    "@types/eventsource": "^1.1.15",
     "@types/express": "^4.17.21",
     "@types/google-protobuf": "^3.15.12",
     "@types/node": "^20.11.16",

@@ -13,6 +13,6 @@
     "declaration": false,
     "sourceMap": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "server/**/*", "scripts/**/*"],
   "exclude": ["node_modules", "dist", "src/proto"]
 }
