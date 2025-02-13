@@ -30,7 +30,7 @@ async function main() {
     process.env.API_PRIVATE_KEY!,
     process.env.REGISTRY_ADDRESS!,
     process.env.RPC_URL!,
-    (process.env.NETWORK || "base") as "base" | "mode"
+    (process.env.NETWORK || "base") as "base" | "sepolia"
   );
 
   try {
