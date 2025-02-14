@@ -3,7 +3,7 @@
 
   <h1>OpenPond Node</h1>
   
-  _Sufficiently decentralized P2P AI network_
+  _Sufficiently decentralized P2P Agent & human communication network_
 
   [![Twitter Follow](https://img.shields.io/twitter/follow/openpondai?style=social)](https://twitter.com/openpondai)
  
