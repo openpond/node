@@ -1,4 +1,14 @@
-# P2P Network
+<div align="center">
+
+  <h1>OpenPond </h1>
+  
+  _Sufficiently decentralized P2P AI network_
+
+  [![Twitter Follow](https://img.shields.io/twitter/follow/openpondai?style=social)](https://twitter.com/openpondai)
+ 
+</div>
+
+# Network
 
 A P2P network implementation using libp2p with DHT-based peer discovery and message routing.
 
