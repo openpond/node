@@ -1,12 +1,14 @@
 import { secp256k1 } from "@noble/curves/secp256k1";
 import axios, { AxiosError } from "axios";
 import { config } from "dotenv";
+import { encrypt } from "eciesjs";
 import { EventSource } from "eventsource";
 import path from "path";
 import { createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia } from "viem/chains";
 import AgentRegistryABI from "../src/abi/AgentRegistry.json" assert { type: "json" };
+import { P2PAgentMessage } from "../src/p2p";
 
 // Load environment variables
 if (process.env.ENV_FILE) {
@@ -26,8 +28,17 @@ for (const envVar of requiredEnvVars) {
 
 // Test configuration
 const SERVER_URL = "http://localhost:3000";
-const RECIPIENT_ADDRESS = "0xdB0A4657286773E24d44D92e33558bec3fF46e6d";
+const RECIPIENT_ADDRESS = "0x2e2390c874a089bEbFdF47BCaA39067Ef5dFF967";
 const REGISTRY_ADDRESS = process.env.REGISTRY_ADDRESS;
+
+// Message structure that server.ts expects
+interface ServerMessageRequest {
+  to: string;
+  content: string;
+  signature: string;
+  conversationId?: string;
+  replyTo?: string;
+}
 
 async function main() {
   // Create a test wallet for signing
@@ -105,13 +116,66 @@ async function main() {
 
   // Send a test message
   try {
+    const content = "What is the market sentiment?";
+
+    // Get recipient's public key from their metadata
+    const recipientInfo = (await publicClient.readContract({
+      address: REGISTRY_ADDRESS as `0x${string}`,
+      abi: AgentRegistryABI,
+      functionName: "getAgentInfo",
+      args: [RECIPIENT_ADDRESS],
+    })) as { metadata: string };
+
+    const recipientMetadata = JSON.parse(recipientInfo.metadata);
+    const recipientPublicKey = Buffer.from(recipientMetadata.publicKey, "hex");
+
+    // Properly encrypt the content using ECIES
+    const contentBytes = new TextEncoder().encode(content);
+    const encrypted = await encrypt(recipientPublicKey, contentBytes);
+    const encryptedContent = {
+      encrypted: Array.from(new Uint8Array(encrypted)),
+    };
+
+    // Create message data matching exactly what p2p.ts will verify
+    const messageData: Omit<P2PAgentMessage, "signature"> = {
+      messageId: `${account.address}-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}`,
+      fromAgentId: account.address,
+      toAgentId: RECIPIENT_ADDRESS,
+      content: encryptedContent,
+      timestamp: Date.now(),
+      nonce: Date.now(),
+      conversationId: undefined,
+      replyTo: undefined,
+    };
+
+    // Sign the exact message structure that will be verified
+    const signature = await client.signMessage({
+      message: JSON.stringify(messageData),
+      account,
+    });
+
+    // Create the complete P2P message with signature
+    const completeMessage: P2PAgentMessage = {
+      ...messageData,
+      signature,
+    };
+
+    // Log the message we're about to send for debugging
+    console.log("Sending message:", {
+      fromAgentId: completeMessage.fromAgentId,
+      toAgentId: completeMessage.toAgentId,
+      messageId: completeMessage.messageId,
+    });
+
+    // Send the P2P message directly to the server
     const response = await axios.post(
       `${SERVER_URL}/message`,
+      completeMessage,
       {
-        to: RECIPIENT_ADDRESS,
-        content: "What is the market sentiment?",
-      },
-      { headers }
+        headers,
+      }
     );
 
     console.log("Message sent:", response.data);
