@@ -4,20 +4,13 @@ import express, { NextFunction, Request, Response } from "express";
 import { Chain, createPublicClient, http, PublicClient } from "viem";
 import AgentRegistryABI from "../src/abi/AgentRegistry.json" assert { type: "json" };
 import { networks } from "../src/networks.js";
-import { P2PNetwork } from "../src/p2p.js";
+import { P2PAgentMessage, P2PNetwork } from "../src/p2p.js";
 import { Logger } from "../src/utils/logger.js";
 
 interface ConnectedClient {
   agentId: string;
   lastSeen: number;
   messageCallbacks: Set<(message: any) => void>;
-}
-
-interface MessageRequest {
-  to: string;
-  content: string;
-  conversationId?: string;
-  replyTo?: string;
 }
 
 interface AgentInfo {
@@ -64,7 +57,8 @@ export class APIServer {
       registryAddress,
       rpcUrl,
       network,
-      true
+      true, // useEncryption
+      true // isServerNode
     );
 
     this.setupExpress();
@@ -144,9 +138,6 @@ export class APIServer {
       }
     });
 
-    // Add message route
-    this.app.post("/message", this.handleMessage.bind(this));
-
     // Routes
     this.setupRoutes();
   }
@@ -155,16 +146,22 @@ export class APIServer {
     // Send message
     this.app.post(
       "/message",
-      async (req: Request<{}, {}, MessageRequest>, res: Response) => {
-        const { to, content, conversationId, replyTo } = req.body;
+      async (req: Request<{}, {}, P2PAgentMessage>, res: Response) => {
         const fromAgentId = req.headers["x-agent-id"] as string;
+        const message = req.body as P2PAgentMessage;
+
+        // Verify the message matches the authenticated sender
+        if (message.fromAgentId.toLowerCase() !== fromAgentId.toLowerCase()) {
+          return res.status(403).json({
+            error: "Message sender does not match authenticated user",
+          });
+        }
 
         try {
+          // Pass the complete message to sendMessage for relaying
           const messageId = await this.p2p.sendMessage(
-            to,
-            content,
-            conversationId,
-            replyTo
+            message.toAgentId || "broadcast",
+            message
           );
           res.json({ messageId });
         } catch (error) {
@@ -302,24 +299,5 @@ export class APIServer {
 
   async stop(): Promise<void> {
     await this.p2p.stop();
-  }
-
-  private async handleMessage(req: Request, res: Response) {
-    try {
-      const { to, content, conversationId, replyTo } =
-        req.body as MessageRequest;
-
-      // Send message through P2P network
-      await this.p2p.sendMessage(to, content, conversationId, replyTo);
-
-      Logger.info("API", "Message sent", {
-        from: req.headers["x-agent-id"] as string,
-        to,
-      });
-      res.json({ success: true });
-    } catch (error) {
-      Logger.error("API", "Send message error", { error });
-      res.status(500).json({ error: "Failed to send message" });
-    }
   }
 }

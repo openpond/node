@@ -69,7 +69,7 @@ interface EncryptedMessage {
  * Structure for P2P messages exchanged between agents.
  * @interface P2PAgentMessage
  */
-interface P2PAgentMessage {
+export interface P2PAgentMessage {
   /** Unique identifier for the message */
   messageId: string;
   /** Ethereum address of the sending agent */
@@ -122,6 +122,7 @@ export class P2PNetwork extends EventEmitter {
   private nodeStatuses: Map<string, any> = new Map();
   private knownPeerToEthMap: Map<string, string> = new Map();
   private knownAgentNames: Map<string, string> = new Map();
+  private serverMode: boolean = false;
 
   // Constants for DHT operations
   private readonly DHT_OPERATION_TIMEOUT = 30000; // 30 seconds
@@ -138,6 +139,7 @@ export class P2PNetwork extends EventEmitter {
    * @param {string} rpcUrl - URL of the Ethereum RPC endpoint
    * @param {NetworkName} networkName - Name of the network (e.g., "base", "mainnet")
    * @param {boolean} useEncryption - Whether to use message encryption
+   * @param {boolean} isServerNode - Whether the node is a server node
    */
   constructor(
     privateKey: string,
@@ -147,13 +149,15 @@ export class P2PNetwork extends EventEmitter {
     private registryAddress: string = "0x05430ECEc2E4D86736187B992873EA8D5e1f1e32",
     private rpcUrl: string = "https://mainnet.base.org",
     private networkName: NetworkName = "base",
-    useEncryption = false
+    useEncryption = false,
+    private isServerNode: boolean = false
   ) {
     super();
     this.useEncryption = useEncryption;
     this.chain = networks[networkName];
     this.privateKey = privateKey.replace("0x", "");
     this.account = privateKeyToAccount(`0x${this.privateKey}`);
+    this.serverMode = isServerNode;
 
     // Initialize registry contract client
     this.registryContract = createPublicClient({
@@ -524,7 +528,7 @@ export class P2PNetwork extends EventEmitter {
       return;
     }
 
-    // Check if message is for us (case insensitive)
+    // Check if message is for us (case insensitive) or if we're in server mode
     const normalizedToAddress = message.toAgentId.toLowerCase();
     const normalizedMyAddress = this.account.address.toLowerCase();
     const isForMe = normalizedToAddress === normalizedMyAddress;
@@ -535,6 +539,7 @@ export class P2PNetwork extends EventEmitter {
       normalizedToAddress,
       normalizedMyAddress,
       isForMe,
+      serverMode: this.serverMode,
     });
 
     if (isForMe) {
@@ -590,6 +595,13 @@ export class P2PNetwork extends EventEmitter {
           messageId: message.messageId,
         });
       }
+    } else if (this.serverMode) {
+      // In server mode, pass through messages not meant for us without decryption
+      Logger.info("P2P", "Server mode - passing through message", {
+        messageId: message.messageId,
+      });
+      this.emit("message", message);
+      this.metrics.messagesReceived++;
     } else {
       Logger.info("P2P", "Message is not for me, ignoring", {
         messageId: message.messageId,
@@ -720,20 +732,41 @@ export class P2PNetwork extends EventEmitter {
    * @param {string} content - Message content to send
    * @param {string} [conversationId] - Optional ID for threaded conversations
    * @param {string} [replyTo] - Optional ID of the message being replied to
+   * @param {string} [signature] - Optional signature for the message
    * @returns {Promise<string>} Message ID of the sent message
    * @throws {Error} If the recipient's PeerId cannot be found or message sending fails
    */
   async sendMessage(
     toAgentId: string,
-    content: string,
+    content: string | P2PAgentMessage,
     conversationId?: string,
-    replyTo?: string
+    replyTo?: string,
+    signature?: string
   ) {
     try {
       // Log current known peers for debugging
       Logger.info("P2P", "Current known peer mappings", {
         knownPeers: Object.fromEntries(this.knownPeerToEthMap.entries()),
       });
+
+      // Handle relay case - if content is a P2PAgentMessage, publish it directly
+      if (typeof content === "object" && "messageId" in content) {
+        Logger.info("P2P", "Relaying existing message", {
+          messageId: content.messageId,
+          fromAgentId: content.fromAgentId,
+          toAgentId: content.toAgentId,
+        });
+
+        const wrappedMessage = { message: content };
+        await this.node.services.pubsub.publish(
+          "agent-messages",
+          new TextEncoder().encode(JSON.stringify(wrappedMessage))
+        );
+
+        this.metrics.messagesSent++;
+        this.metrics.lastMessageTime = Date.now();
+        return content.messageId;
+      }
 
       // Automatically lookup PeerId from Ethereum address
       const targetPeerId = await this.lookupPeerIdByAddress(toAgentId);
@@ -821,8 +854,13 @@ export class P2PNetwork extends EventEmitter {
         toAgentId: messageData.toAgentId,
       });
 
-      const signature = await this.signMessage(messageData);
-      const message: P2PAgentMessage = { ...messageData, signature };
+      // Use provided signature or generate one
+      const messageSignature =
+        signature || (await this.signMessage(messageData));
+      const message: P2PAgentMessage = {
+        ...messageData,
+        signature: messageSignature,
+      };
 
       Logger.info("P2P", "Publishing message to pubsub", {
         topic: "agent-messages",
