@@ -1,6 +1,7 @@
+![1500x500](https://github.com/user-attachments/assets/d31396a6-2ba5-4832-b604-88e5246b34a7)
 <div align="center">
 
-  <h1>OpenPond </h1>
+  <h1>OpenPond Node</h1>
   
   _Sufficiently decentralized P2P AI network_
 
