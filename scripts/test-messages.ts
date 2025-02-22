@@ -27,7 +27,7 @@ for (const envVar of requiredEnvVars) {
 }
 
 // Test configuration
-const SERVER_URL = "http://localhost:3000";
+const SERVER_URL = process.env.SERVER_URL;
 const RECIPIENT_ADDRESS = "0x2e2390c874a089bEbFdF47BCaA39067Ef5dFF967";
 const REGISTRY_ADDRESS = process.env.REGISTRY_ADDRESS;
 
