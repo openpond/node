@@ -7,6 +7,7 @@
     "get-peer-id": "tsx scripts/get-peer-id.ts",
     "explorer": "ENV_FILE=.env.agent2 tsx scripts/agent-explorer.ts",
     "server": "ENV_FILE=./server/.env.api tsx server/index.ts",
+    "server:prod": "tsx server/index.ts",
     "server:dev": "ENV_FILE=./server/.env.api tsx watch server/index.ts",
     "start": "node dist/server/index.js",
     "prepare": "husky install",

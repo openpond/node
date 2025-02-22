@@ -1,0 +1,7 @@
+[build]
+builder = "dockerfile"
+
+[deploy]
+startCommand = "pnpm server:prod"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
