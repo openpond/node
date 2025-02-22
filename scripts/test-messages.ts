@@ -104,15 +104,68 @@ async function main() {
     "x-signature": signature,
   };
 
-  // Set up SSE connection to receive messages
-  const eventSource = new EventSource(`${SERVER_URL}/messages/stream`, {
-    headers: headers,
-  } as EventSourceInit & { headers: Record<string, string> });
+  // Get list of agents on the network
+  try {
+    const agentsResponse = await axios.get(`${SERVER_URL}/agents`, { headers });
+    const agents = agentsResponse.data;
+    console.log("\nCurrent agents on network:", agents.length);
+    console.log("Agent details:");
+    agents.forEach((agent: any) => {
+      console.log(`- ${agent.name} (${agent.address})`);
+      console.log(`  Connected: ${agent.isConnected}`);
+    });
+    console.log(); // Empty line for better readability
+  } catch (error) {
+    console.error(
+      "Error getting agents:",
+      error instanceof AxiosError ? error.response?.data : error
+    );
+  }
 
-  eventSource.onmessage = (event: MessageEvent) => {
-    const message = JSON.parse(event.data);
-    console.log("Received message:", message);
+  // Set up SSE connection to receive messages
+  const eventSourceUrl = new URL(`${SERVER_URL}/messages/stream`);
+  // Add headers as query parameters since EventSource doesn't support custom headers
+  eventSourceUrl.searchParams.append("x-agent-id", headers["x-agent-id"]);
+  eventSourceUrl.searchParams.append("x-timestamp", headers["x-timestamp"]);
+  eventSourceUrl.searchParams.append("x-signature", headers["x-signature"]);
+
+  const eventSource = new EventSource(eventSourceUrl.toString());
+
+  eventSource.onopen = () => {
+    console.log("EventSource connection opened");
   };
+
+  eventSource.onerror = (error) => {
+    console.error("EventSource error:", error);
+    // Reconnect on error
+    setTimeout(() => {
+      console.log("Attempting to reconnect...");
+      eventSource.close();
+      const newEventSource = new EventSource(eventSourceUrl.toString());
+      Object.assign(eventSource, newEventSource);
+    }, 1000);
+  };
+
+  eventSource.onmessage = async (event: MessageEvent) => {
+    const message = JSON.parse(event.data);
+
+    try {
+      // Convert the array of bytes back to text since it's plaintext
+      const text = new TextDecoder().decode(
+        new Uint8Array(message.content.encrypted)
+      );
+      console.log("\nMessage content:", text);
+    } catch (error) {
+      console.error("Failed to decode message:", error);
+    }
+  };
+
+  // Ensure the script doesn't exit immediately
+  process.on("SIGINT", () => {
+    console.log("Closing EventSource connection...");
+    eventSource.close();
+    process.exit();
+  });
 
   // Send a test message
   try {

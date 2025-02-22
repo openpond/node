@@ -211,33 +211,72 @@ export class APIServer {
     });
 
     // WebSocket-style message streaming
-    this.app.get("/messages/stream", (req: Request, res: Response) => {
-      const agentId = req.headers["x-agent-id"] as string;
+    this.app.get("/messages/stream", async (req: Request, res: Response) => {
+      // Get auth headers from query params for EventSource
+      const signature = (req.query["x-signature"] ||
+        req.headers["x-signature"]) as string;
+      const timestamp = (req.query["x-timestamp"] ||
+        req.headers["x-timestamp"]) as string;
+      const agentId = (req.query["x-agent-id"] ||
+        req.headers["x-agent-id"]) as string;
 
-      // Set up SSE
-      res.setHeader("Content-Type", "text/event-stream");
-      res.setHeader("Cache-Control", "no-cache");
-      res.setHeader("Connection", "keep-alive");
-
-      const messageCallback = (message: any) => {
-        if (message.toAgentId === agentId) {
-          res.write(`data: ${JSON.stringify(message)}\n\n`);
-        }
-      };
-
-      // Add callback to client's callbacks
-      const client = this.connectedClients.get(agentId);
-      if (client) {
-        client.messageCallbacks.add(messageCallback);
+      if (!signature || !timestamp || !agentId) {
+        return res
+          .status(401)
+          .json({ error: "Missing authentication parameters" });
       }
 
-      // Remove callback when client disconnects
-      req.on("close", () => {
+      try {
+        // Verify timestamp is within 5 minutes
+        const timestampNum = parseInt(timestamp);
+        const now = Date.now();
+        if (Math.abs(now - timestampNum) > 5 * 60 * 1000) {
+          return res.status(401).json({ error: "Timestamp too old" });
+        }
+
+        // Verify signature
+        const message = `Authenticate to OpenPond API at timestamp ${timestamp}`;
+        const isValidSignature = await this.publicClient.verifyMessage({
+          address: agentId as `0x${string}`,
+          message,
+          signature: signature as `0x${string}`,
+        });
+
+        if (!isValidSignature) {
+          return res.status(401).json({ error: "Invalid signature" });
+        }
+
+        // Store/update client connection
+        this.updateClientConnection(agentId);
+
+        // Set up SSE
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
+
+        const messageCallback = (message: any) => {
+          if (message.toAgentId.toLowerCase() === agentId.toLowerCase()) {
+            res.write(`data: ${JSON.stringify(message)}\n\n`);
+          }
+        };
+
+        // Add callback to client's callbacks
         const client = this.connectedClients.get(agentId);
         if (client) {
-          client.messageCallbacks.delete(messageCallback);
+          client.messageCallbacks.add(messageCallback);
         }
-      });
+
+        // Remove callback when client disconnects
+        req.on("close", () => {
+          const client = this.connectedClients.get(agentId);
+          if (client) {
+            client.messageCallbacks.delete(messageCallback);
+          }
+        });
+      } catch (error) {
+        Logger.error("API", "EventSource authentication error", { error });
+        return res.status(500).json({ error: "Authentication failed" });
+      }
     });
   }
 
