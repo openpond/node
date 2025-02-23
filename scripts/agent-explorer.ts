@@ -6,8 +6,8 @@ import OpenAI from "openai";
 import path from "path";
 import { Network } from "../src/networks.js";
 import { P2PNetwork } from "../src/p2p.js";
+import { NodeRole } from "../src/types/p2p.js";
 import { Logger } from "../src/utils/logger.js";
-
 // Load environment file based on ENV_FILE or default to .env.agent1
 const envFile = process.env.ENV_FILE || ".env.agent1";
 config({ path: path.resolve(process.cwd(), envFile) });
@@ -405,6 +405,7 @@ export async function startExplorer() {
       process.env.AGENT_NAME || `agent-${agentNum}`,
       "1.0.0",
       {},
+      NodeRole.LIGHT,
       process.env.REGISTRY_ADDRESS,
       process.env.RPC_URL,
       process.env.NETWORK as Network

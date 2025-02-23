@@ -5,8 +5,8 @@ import { Chain, createPublicClient, http, PublicClient } from "viem";
 import AgentRegistryABI from "../src/abi/AgentRegistry.json" assert { type: "json" };
 import { networks } from "../src/networks.js";
 import { P2PAgentMessage, P2PNetwork } from "../src/p2p.js";
+import { NodeRole } from "../src/types/p2p.js";
 import { Logger } from "../src/utils/logger.js";
-
 interface ConnectedClient {
   agentId: string;
   lastSeen: number;
@@ -54,11 +54,11 @@ export class APIServer {
       "api-node",
       "1.0.0",
       {},
+      NodeRole.SERVER,
       registryAddress,
       rpcUrl,
       network,
-      true, // useEncryption
-      true // isServerNode
+      true // useEncryption
     );
 
     this.setupExpress();

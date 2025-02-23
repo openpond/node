@@ -23,6 +23,7 @@ import {
   getBootstrapPort,
 } from "./constants";
 import { NetworkName, networks } from "./networks";
+import { NodeConfiguration, NodeRole, roleConfigs } from "./types/p2p";
 import { Logger } from "./utils/logger";
 const { publicKeyCreate } = secp256k1;
 
@@ -113,21 +114,14 @@ export class P2PNetwork extends EventEmitter {
   };
   private peerId: any;
   private dht: any;
-  private bootstrapMode: boolean = false;
   private updateInterval: ReturnType<typeof setInterval> | null = null;
   private lastDHTUpdate: number = 0;
-  private readonly MIN_DHT_UPDATE_INTERVAL = 10_000; // 10 seconds instead of 60 seconds
-  private readonly MAX_CONNECTIONS = this.bootstrapMode ? 1000 : 50;
   private bootstrapNodes: string[] = [];
   private nodeStatuses: Map<string, any> = new Map();
   private knownPeerToEthMap: Map<string, string> = new Map();
   private knownAgentNames: Map<string, string> = new Map();
-  private serverMode: boolean = false;
-
-  // Constants for DHT operations
-  private readonly DHT_OPERATION_TIMEOUT = 30000; // 30 seconds
-  private readonly DHT_GET_TIMEOUT = 10000; // 10 seconds
-  private readonly DHT_PUT_TIMEOUT = 20000; // 20 seconds
+  private readonly role: NodeRole;
+  private readonly config: NodeConfiguration;
 
   /**
    * Creates a new P2PNetwork instance.
@@ -135,29 +129,45 @@ export class P2PNetwork extends EventEmitter {
    * @param {string} agentName - Name of the agent
    * @param {string} version - Version of the agent software
    * @param {AgentMetadata} metadata - Additional metadata for the agent
+   * @param {NodeRole} role - The role of this node in the network
    * @param {string} registryAddress - Address of the agent registry contract
    * @param {string} rpcUrl - URL of the Ethereum RPC endpoint
    * @param {NetworkName} networkName - Name of the network (e.g., "base", "mainnet")
    * @param {boolean} useEncryption - Whether to use message encryption
-   * @param {boolean} isServerNode - Whether the node is a server node
    */
   constructor(
     privateKey: string,
     private agentName: string,
     private version: string,
     private metadata: AgentMetadata,
+    role: NodeRole,
     private registryAddress: string = "0x05430ECEc2E4D86736187B992873EA8D5e1f1e32",
     private rpcUrl: string = "https://mainnet.base.org",
     private networkName: NetworkName = "base",
-    useEncryption = false,
-    private isServerNode: boolean = false
+    useEncryption = false
   ) {
     super();
     this.useEncryption = useEncryption;
     this.chain = networks[networkName];
     this.privateKey = privateKey.replace("0x", "");
     this.account = privateKeyToAccount(`0x${this.privateKey}`);
-    this.serverMode = isServerNode;
+
+    // Check if this address is a bootstrap node
+    const bootstrapAddresses = getBootstrapNodes(this.networkName).map(
+      (node) => {
+        const [_, addr] = node.split("/p2p/");
+        return addr;
+      }
+    );
+
+    // Force bootstrap role if address matches bootstrap node
+    if (bootstrapAddresses.includes(this.account.address.toLowerCase())) {
+      this.role = NodeRole.BOOTSTRAP;
+    } else {
+      this.role = role;
+    }
+
+    this.config = roleConfigs[this.role];
 
     // Initialize registry contract client
     this.registryContract = createPublicClient({
@@ -168,26 +178,80 @@ export class P2PNetwork extends EventEmitter {
     const privKeyBuffer = Buffer.from(this.privateKey, "hex");
     this.publicKey = publicKeyCreate(new Uint8Array(privKeyBuffer), false);
 
-    // Set bootstrap mode based on the agent's address, not the name
-    const bootstrapAddresses = getBootstrapNodes(this.networkName).map(
-      (node) => {
-        const [_, addr] = node.split("/p2p/");
-        return addr;
-      }
-    );
-    this.bootstrapMode = bootstrapAddresses.includes(
-      this.account.address.toLowerCase()
-    );
-
-    // Set bootstrap nodes if we're not a bootstrap node
-    if (!this.bootstrapMode) {
+    // Set bootstrap nodes for non-bootstrap nodes
+    if (this.role !== NodeRole.BOOTSTRAP) {
       this.bootstrapNodes = getBootstrapNodes(this.networkName);
     }
   }
 
   /**
+   * Creates libp2p configuration options based on the node's role.
+   * @private
+   * @param {number} port - The port number to listen on
+   * @returns {object} The libp2p configuration options
+   */
+  private createLibp2pOptions(port: number) {
+    const options = {
+      addresses: {
+        listen: [`/ip4/0.0.0.0/tcp/${port}`],
+        announce: [],
+      },
+      transports: [tcp()],
+      connectionEncrypters: [noise()],
+      streamMuxers: [yamux()],
+      services: {
+        identify: identify(),
+      },
+      connectionManager: {
+        maxConnections: this.config.maxConnections,
+        minConnections: this.config.minConnections,
+        maxParallelDials: this.config.maxParallelDials,
+        dialTimeout: this.config.dialTimeout,
+        autoDialInterval: this.config.autoDialInterval,
+      },
+    } as any;
+
+    // Add gossip configuration if enabled
+    if (this.config.enableGossip) {
+      options.services.pubsub = gossipsub({
+        allowPublishToZeroTopicPeers: this.config.allowPublishToZeroPeers,
+        emitSelf: this.config.emitSelf,
+        heartbeatInterval: this.config.gossipHeartbeatInterval,
+        directPeers:
+          this.role === NodeRole.BOOTSTRAP
+            ? []
+            : this.bootstrapNodes.map((addr) => ({
+                id: peerIdFromString(addr.split("/p2p/")[1]),
+                addrs: [multiaddr(addr)],
+              })),
+      });
+    }
+
+    // Add DHT configuration if enabled
+    if (this.config.enableDHT) {
+      options.services.dht = kadDHT({
+        clientMode: !this.config.dhtServerMode,
+        protocol: "/openpond/kad/1.0.0",
+        maxInboundStreams: this.config.maxDHTInboundStreams,
+        maxOutboundStreams: this.config.maxDHTOutboundStreams,
+        kBucketSize: this.config.kBucketSize,
+        allowQueryWithZeroPeers: true,
+      });
+    }
+
+    // Add bootstrap node specific configuration
+    if (this.role === NodeRole.BOOTSTRAP) {
+      const port = getBootstrapPort(this.networkName, this.agentName);
+      const hostname = getBootstrapHostname(this.networkName, this.agentName);
+      options.addresses.announce = [`/dns4/${hostname}/tcp/${port}`];
+    }
+
+    return options;
+  }
+
+  /**
    * Starts the P2P network node.
-   * Initializes the libp2p node with the appropriate configuration based on whether it's a bootstrap node or regular agent.
+   * Initializes the libp2p node with the role-based configuration.
    * Sets up DHT, pubsub, and connection handlers.
    *
    * @param {number} port - The port number to listen on
@@ -199,67 +263,14 @@ export class P2PNetwork extends EventEmitter {
     try {
       Logger.info("P2P", "🌟 Starting P2P node...", {
         agentName: this.agentName,
-        isBootstrap: this.agentName.startsWith("bootstrap-"),
+        role: this.role,
         port,
       });
 
-      // Create base options without sensitive data
-      const options: any = {
-        addresses: {
-          listen: [`/ip4/0.0.0.0/tcp/${port}`],
-          announce: [],
-        },
-        transports: [tcp()],
-        connectionEncrypters: [noise()],
-        streamMuxers: [yamux()],
-        services: {
-          pubsub: gossipsub({
-            allowPublishToZeroTopicPeers: true,
-            emitSelf: true,
-            heartbeatInterval: 1000,
-            directPeers: this.agentName.startsWith("bootstrap-")
-              ? []
-              : this.bootstrapNodes.map((addr) => ({
-                  id: peerIdFromString(addr.split("/p2p/")[1]),
-                  addrs: [multiaddr(addr)],
-                })),
-          }),
-          identify: identify(),
-          dht: kadDHT({
-            clientMode: !this.agentName.startsWith("bootstrap-"),
-            protocol: "/openpond/kad/1.0.0",
-            maxInboundStreams: 5000,
-            maxOutboundStreams: 5000,
-            kBucketSize: this.agentName.startsWith("bootstrap-") ? 200 : 20,
-            allowQueryWithZeroPeers: true,
-          }),
-        },
-        connectionManager: {
-          maxConnections: this.agentName.startsWith("bootstrap-") ? 1000 : 50,
-          minConnections: this.agentName.startsWith("bootstrap-") ? 3 : 1,
-          maxParallelDials: this.agentName.startsWith("bootstrap-") ? 100 : 25,
-          dialTimeout: 30000,
-          autoDialInterval: 10000,
-        },
-      };
+      // Create node options
+      const options = this.createLibp2pOptions(port);
 
-      // If we're a bootstrap node, announce our public address
-      if (this.agentName.startsWith("bootstrap-")) {
-        const port = getBootstrapPort(this.networkName, this.agentName);
-        const hostname = getBootstrapHostname(this.networkName, this.agentName);
-
-        Logger.info(
-          "P2P",
-          `Bootstrap node announcing with hostname: ${hostname} and port: ${port}`
-        );
-        options.addresses.announce = [`/dns4/${hostname}/tcp/${port}`];
-
-        // Add bootstrap-specific DHT configuration
-        this.bootstrapMode = true;
-        Logger.info("P2P", "Running in bootstrap mode with DHT server enabled");
-        options.addresses.announce = [`/dns4/${hostname}/tcp/${port}`];
-      }
-
+      // Add bootstrap key if provided
       if (bootstrapKey) {
         options.privateKey = bootstrapKey;
         Logger.info("P2P", "Using bootstrap libp2p key");
@@ -281,40 +292,43 @@ export class P2PNetwork extends EventEmitter {
       });
       this.peerId = this.node.peerId;
 
-      // Set up pubsub
-      Logger.info("P2P", "Setting up pubsub...");
-      await this.setupPubSub();
-      Logger.info("P2P", "Pubsub setup complete");
-
-      if (this.bootstrapMode) {
-        // Start DHT server mode first for bootstrap nodes
-        Logger.info("P2P", "Starting DHT in bootstrap mode");
-        try {
-          await this.node.services.dht.start();
-          Logger.info("P2P", "DHT bootstrap mode started successfully", {
-            routingTableSize: this.node.services.dht.routingTable.size,
-          });
-        } catch (error) {
-          Logger.error("P2P", "Failed to start DHT in bootstrap mode", {
-            error,
-          });
-          throw error;
-        }
-
-        // Then connect to other bootstrap nodes
-        await this.connectToBootstrapNodes();
-      } else {
-        // For regular nodes, wait for bootstrap connection
-        Logger.info("P2P", "Waiting for bootstrap connection...");
-        await this.waitForBootstrapConnection();
+      // Set up pubsub if enabled
+      if (this.config.enableGossip) {
+        Logger.info("P2P", "Setting up pubsub...");
+        await this.setupPubSub();
+        Logger.info("P2P", "Pubsub setup complete");
       }
 
-      // Start discovery and publish our DHT record
-      await this.startDiscovery();
-      await this.publishToDHT();
+      // Handle DHT setup based on role
+      if (this.config.enableDHT) {
+        if (this.config.dhtServerMode) {
+          Logger.info("P2P", "Starting DHT in server mode");
+          try {
+            await this.node.services.dht.start();
+            Logger.info("P2P", "DHT server mode started successfully", {
+              routingTableSize: this.node.services.dht.routingTable.size,
+            });
+          } catch (error) {
+            Logger.error("P2P", "Failed to start DHT in server mode", {
+              error,
+            });
+            throw error;
+          }
+        }
 
-      // Start periodic DHT maintenance
-      await this.startDHTMaintenance();
+        // Connect to bootstrap nodes if required
+        if (this.config.bootstrapRequired) {
+          Logger.info("P2P", "Connecting to bootstrap nodes...");
+          await this.connectToBootstrapNodes();
+        }
+
+        // Start discovery and publish DHT record
+        await this.startDiscovery();
+        await this.publishToDHT();
+
+        // Start periodic DHT maintenance
+        await this.startDHTMaintenance();
+      }
 
       return this.node;
     } catch (error) {
@@ -380,7 +394,7 @@ export class P2PNetwork extends EventEmitter {
       setInterval(async () => {
         await this.announcePresence();
         await this.updateDHTRecords();
-      }, 10_000); // Every 30 seconds
+      }, this.config.minDHTUpdateInterval); // Use role-specific minimum interval
 
       // Listen for new peer connections
       this.node.addEventListener("peer:connect", async (evt: any) => {
@@ -439,7 +453,7 @@ export class P2PNetwork extends EventEmitter {
           type: "peer-list",
           peers,
           timestamp: Date.now(),
-          fromBootstrap: this.bootstrapMode,
+          fromBootstrap: this.role === NodeRole.BOOTSTRAP,
         };
 
         await this.node.services.pubsub.publish(
@@ -539,7 +553,7 @@ export class P2PNetwork extends EventEmitter {
       normalizedToAddress,
       normalizedMyAddress,
       isForMe,
-      serverMode: this.serverMode,
+      isServer: this.role === NodeRole.SERVER,
     });
 
     if (isForMe) {
@@ -595,7 +609,7 @@ export class P2PNetwork extends EventEmitter {
           messageId: message.messageId,
         });
       }
-    } else if (this.serverMode) {
+    } else if (this.role === NodeRole.SERVER) {
       // In server mode, pass through messages not meant for us without decryption
       Logger.info("P2P", "Server mode - passing through message", {
         messageId: message.messageId,
@@ -938,7 +952,7 @@ export class P2PNetwork extends EventEmitter {
    * @returns {Promise<void>}
    */
   private async connectToBootstrapNodes() {
-    if (!this.bootstrapMode) {
+    if (this.role !== NodeRole.BOOTSTRAP) {
       Logger.info("P2P", "Connecting to bootstrap nodes");
 
       for (const addr of this.bootstrapNodes) {
@@ -988,11 +1002,12 @@ export class P2PNetwork extends EventEmitter {
           dhtRecords: records,
           myPeerId: this.node.peerId.toString(),
           myAddress: this.account.address,
+          role: this.role,
         });
       } catch (error) {
         Logger.error("P2P", "Bootstrap DHT check failed", { error });
       }
-    }, 30_000);
+    }, this.config.dhtUpdateInterval);
   }
 
   /**
@@ -1018,6 +1033,7 @@ export class P2PNetwork extends EventEmitter {
           agentName:
             this.knownAgentNames.get(lowercaseAddr) ||
             `Agent ${ethAddr.slice(0, 6)}`,
+          role: this.role,
         };
       }
     } catch (error) {
@@ -1142,7 +1158,7 @@ export class P2PNetwork extends EventEmitter {
         multiaddrs: this.node
           .getMultiaddrs()
           .map((addr: Multiaddr) => addr.toString()),
-        isBootstrap: this.bootstrapMode,
+        isBootstrap: this.role === NodeRole.BOOTSTRAP,
       };
 
       await this.node.services.pubsub.publish(
@@ -1230,7 +1246,7 @@ export class P2PNetwork extends EventEmitter {
    * @throws {Error} If the peer ID verification fails or bootstrap key cannot be loaded
    */
   private async verifyBootstrapNode() {
-    if (this.bootstrapMode) {
+    if (this.role === NodeRole.BOOTSTRAP) {
       try {
         const keyData = JSON.parse(
           await fs.readFile(
@@ -1307,7 +1323,7 @@ export class P2PNetwork extends EventEmitter {
    */
   private async handleNewConnection(connection: any) {
     const currentConnections = this.node.getConnections().length;
-    if (currentConnections > this.MAX_CONNECTIONS) {
+    if (currentConnections > this.config.maxConnections) {
       Logger.warn("P2P", "Connection limit reached, dropping connection");
       await connection.close();
       return;
@@ -1401,7 +1417,7 @@ export class P2PNetwork extends EventEmitter {
                 memory: process.memoryUsage(),
                 dhtSize: this.node.services.dht.routingTable.size,
                 multiaddrs: this.node.getMultiaddrs().map(String),
-                isBootstrap: this.agentName.startsWith("bootstrap-"),
+                isBootstrap: this.role === NodeRole.BOOTSTRAP,
                 lastMessageTime: this.metrics.lastMessageTime,
               },
             })
@@ -1484,7 +1500,7 @@ export class P2PNetwork extends EventEmitter {
    */
   public async startDiscovery() {
     // Bootstrap nodes should connect to each other and share records
-    if (this.agentName.startsWith("bootstrap-")) {
+    if (this.role === NodeRole.BOOTSTRAP) {
       const otherBootstrapNodes = getBootstrapNodes(this.networkName).filter(
         (addr) => !addr.includes(this.node.peerId.toString())
       );
@@ -1514,9 +1530,11 @@ export class P2PNetwork extends EventEmitter {
               "bootstrap-4": "0x4d1c89b79fc02bbc6f56c256e8ab5c4db890b2c4",
             };
 
-            // Find which bootstrap node this is
+            // Find which bootstrap node this is by role and address
             const bootstrapNum = Object.entries(bootstrapAddrs).find(
-              ([name, _]) => addr.includes(name.replace("bootstrap-", "us-"))
+              ([name, addr]) =>
+                this.role === NodeRole.BOOTSTRAP &&
+                addr.toLowerCase() === this.account.address.toLowerCase()
             )?.[0];
 
             if (
@@ -1535,6 +1553,7 @@ export class P2PNetwork extends EventEmitter {
                 agentId: ethAddr,
                 agentName: this.agentName,
                 multiaddrs: [addr],
+                role: this.role,
               };
               await this.node.services.dht.put(
                 key,
@@ -1548,6 +1567,7 @@ export class P2PNetwork extends EventEmitter {
                   peerId,
                   ethAddr,
                   multiaddr: addr,
+                  role: this.role,
                 }
               );
             }
@@ -1567,8 +1587,10 @@ export class P2PNetwork extends EventEmitter {
       }
 
       // Start DHT in bootstrap mode
-      await this.node.services.dht.start();
-      Logger.info("P2P", "Started DHT in bootstrap mode");
+      if (this.config.enableDHT && this.config.dhtServerMode) {
+        await this.node.services.dht.start();
+        Logger.info("P2P", "Started DHT in server mode");
+      }
     }
 
     // For regular nodes, ensure we have at least one bootstrap connection
@@ -1621,7 +1643,7 @@ export class P2PNetwork extends EventEmitter {
         multiaddrs: this.node
           .getMultiaddrs()
           .map((addr: Multiaddr) => addr.toString()),
-        isBootstrap: this.bootstrapMode,
+        isBootstrap: this.role === NodeRole.BOOTSTRAP,
       };
 
       await this.node.services.pubsub.publish(
@@ -1673,7 +1695,7 @@ export class P2PNetwork extends EventEmitter {
 
         // Log the current state
         Logger.info("P2P", "DHT State", {
-          type: this.bootstrapMode ? "bootstrap" : "agent",
+          type: this.role === NodeRole.BOOTSTRAP ? "bootstrap" : "agent",
           myAddress: this.account.address,
           myPeerId: this.node.peerId.toString(),
           connectedPeers: this.node.getPeers().length,
@@ -1688,7 +1710,7 @@ export class P2PNetwork extends EventEmitter {
       } catch (error) {
         Logger.error("P2P", "Failed to update DHT records", { error });
       }
-    }, 60_000); // Every minute
+    }, this.config.dhtUpdateInterval); // Use role-specific update interval
   }
 
   /**
