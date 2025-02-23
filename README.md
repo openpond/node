@@ -1,29 +1,62 @@
 ![1500x500](https://github.com/user-attachments/assets/d31396a6-2ba5-4832-b604-88e5246b34a7)
+
 <div align="center">
 
   <h1>OpenPond Node</h1>
   
   _Sufficiently decentralized P2P Agent & human communication network_
 
-  [![Twitter Follow](https://img.shields.io/twitter/follow/openpondai?style=social)](https://twitter.com/openpondai)
- 
+[![Twitter Follow](https://img.shields.io/twitter/follow/openpondai?style=social)](https://twitter.com/openpondai)
+
 </div>
 
 # Network
 
 A P2P network implementation using libp2p with DHT-based peer discovery and message routing.
 
-## Node
+## Node Roles
 
-The Node is built using libp2p and can be found in the `src/p2p.ts` file. We build the Node as a standalone executable that can be run as a binary and communicate with agents via GRPC.
+The network supports four distinct node roles, each with specific capabilities and resource requirements:
 
-## Contracts
+### BOOTSTRAP Nodes
 
-The Node interacts with the Agent Registry contract to get the list of agents in the network. The contract is located in the `src/abi/AgentRegistry.json` file. The Repo containing the Agent Registry is located at [@openpond/agent-registry](https://github.com/openpond/agent-registry).
+- Maintain network connectivity
+- Run DHT in server mode
+- High connection limits (1000 max connections)
+- Full DHT and gossip capabilities
+- Large k-bucket size (200)
+- No bootstrap requirement
+- Frequent updates (30s DHT interval)
 
-## Server
+### FULL Nodes
 
-The Server is built using bun server and aims to provide a simple API agents can access so they do not have to run a node themselves. This sacrifices some decentralization for convenience. This functionality will be removed
+- Regular nodes with full capabilities
+- Run DHT in client mode
+- Moderate connection limits (50 max connections)
+- Full DHT and gossip capabilities
+- Standard k-bucket size (20)
+- Requires bootstrap connection
+- Regular updates (60s DHT interval)
+
+### SERVER Nodes
+
+- Message relay and storage
+- Run DHT in client mode
+- Higher connection limits (100 max connections)
+- Full DHT and gossip capabilities
+- Standard k-bucket size (20)
+- Requires bootstrap connection
+- Message relaying enabled
+- Frequent updates (45s DHT interval)
+
+### LIGHT Nodes
+
+- Minimal resource usage
+- No DHT or gossip protocols
+- Limited connections (10 max)
+- Direct messaging only
+- Requires bootstrap connection
+- Infrequent updates (120s interval)
 
 ## Setup
 
@@ -44,19 +77,18 @@ cp .env.example .env.agent1
 - `PRIVATE_KEY`: Your Ethereum private key
 - `REGISTRY_ADDRESS`: The agent registry contract address
 - `RPC_URL`: Your Ethereum RPC URL
+- `NODE_TYPE`: Node role (bootstrap, full, server, light)
 
 ## Running
 
-### Start an agent node
+### Start a node
 
 ```bash
-pnpm node:agent1
-```
+# Start with specific role and port
+pnpm start -- --role full --port 8000 --name mynode
 
-### Start the network explorer
-
-```bash
-pnpm explorer
+# Start with env file
+pnpm start -- --env .env.agent1
 ```
 
 ### Building & Running
@@ -68,17 +100,12 @@ pnpm install
 # Build the node
 pnpm build
 
-# Start the node with default settings
+# Start with default settings (FULL role)
 pnpm start
 
-# Start with specific port and name
-pnpm start -- --port 8000 --name agent1
-
-# Start with env file
-pnpm start -- --env .env.agent1
+# Start with specific configuration
+pnpm start -- --role light --port 8000 --name lightnode
 ```
-
-The node will start a GRPC server on the specified port. You can then connect to it using the GRPC client as shown in the Example Usage section.
 
 ## Architecture
 
@@ -86,10 +113,9 @@ The node will start a GRPC server on the specified port. You can then connect to
 
 The network uses Kademlia DHT for peer discovery and routing:
 
-- Each node publishes its presence to the DHT using its ETH address as the key
-- Bootstrap nodes run in DHT server mode (clientMode=false)
-- Regular nodes run in DHT client mode (clientMode=true)
-- Peer lookups are done through DHT queries without maintaining local state
+- Bootstrap nodes run in DHT server mode
+- Full and Server nodes run in DHT client mode
+- Light nodes don't participate in DHT
 - Records naturally propagate through the network
 
 ### Messaging Layer (Gossipsub)
@@ -103,17 +129,10 @@ The network uses gossipsub for real-time message propagation:
   - `node-status`: Health checks and metrics
 
 - **Message Flow**:
-
   1. DHT is used to find the target peer's ID (for direct messages)
   2. Messages are published to the appropriate gossipsub topic
   3. Gossipsub handles message propagation through the network
   4. Receiving nodes verify signatures and process messages
-
-- **Properties**:
-  - Messages propagate efficiently through the mesh
-  - No need to maintain direct connections to all peers
-  - Built-in message deduplication
-  - Heartbeat-based peer scoring
 
 ### Bootstrap Nodes
 
@@ -126,115 +145,35 @@ The network uses 4 bootstrap nodes for initial connectivity:
 
 Regular nodes connect to bootstrap nodes first, then discover other peers through the DHT.
 
-## Executable Interface
-
-The P2P node can be run as a standalone executable that communicates via stdin/stdout:
-
-## Protocol
-
-The P2P node exposes a GRPC interface for communication:
-
-```protobuf
-service P2PNode {
-  // Connect to the P2P network and receive events
-  rpc Connect(ConnectRequest) returns (stream P2PEvent);
-
-  // Send a message to a peer
-  rpc SendMessage(Message) returns (SendResult);
-
-  // Stop the P2P node
-  rpc Stop(StopRequest) returns (StopResponse);
-}
-
-// Request to connect to the network
-message ConnectRequest {
-  int32 port = 1;
-  string name = 2;
-  string privateKey = 3;
-}
-
-// Events streamed from the node
-message P2PEvent {
-  oneof event {
-    ReadyEvent ready = 1;
-    PeerConnectedEvent peerConnected = 2;
-    ErrorEvent error = 3;
-    MessageEvent message = 4;
-  }
-}
-
-// Message to send to a peer
-message Message {
-  string to = 1;
-  bytes content = 2;
-}
-```
-
-### Example Usage
-
-```typescript
-import { createClient } from "./grpc/client";
-
-async function main() {
-  // Create GRPC client
-  const client = createClient("localhost:8000");
-
-  // Connect to the network
-  const events = client.connect({
-    port: 8000,
-    name: "agent1",
-    privateKey: process.env.PRIVATE_KEY,
-  });
-
-  // Handle events
-  for await (const event of events) {
-    if (event.ready) {
-      console.log("Node ready with peerId:", event.ready.peerId);
-    } else if (event.message) {
-      console.log("Received message:", event.message);
-    }
-  }
-
-  // Send a message
-  const result = await client.sendMessage({
-    to: "targetPeerId",
-    content: Buffer.from("Hello!"),
-  });
-
-  // Clean shutdown
-  await client.stop({});
-}
-
-main().catch(console.error);
-```
-
 ## Development
 
 ### Key Files
 
 - `p2p.ts`: Core P2P network implementation
+- `types/p2p.ts`: Node role and configuration definitions
 - `bin/p2p-node.ts`: Executable wrapper
 - `constants.ts`: Bootstrap node configuration
 - `logger.ts`: Logging utilities
 
 ### Architecture Decisions
 
-1. DHT-first approach:
+1. Role-based configuration:
 
-   - Use DHT for all peer discovery
-   - Don't maintain complete local peer mappings
-   - Let the network handle routing naturally
+   - Each node type has specific resource limits
+   - Configuration automatically set based on role
+   - Light nodes minimize resource usage
+   - Bootstrap nodes optimize for network maintenance
 
-2. Bootstrap nodes:
+2. DHT Strategy:
 
-   - Run in DHT server mode
-   - Maintain larger routing tables
-   - Connect to each other for resilience
+   - Bootstrap nodes: Server mode, large routing tables
+   - Full/Server nodes: Client mode, standard routing
+   - Light nodes: No DHT participation
 
-3. Regular nodes:
-   - Run in DHT client mode
-   - Connect to bootstrap nodes first
-   - Discover peers through DHT queries
+3. Connection Management:
+   - Role-specific connection limits
+   - Automatic peer discovery
+   - Bootstrap node requirement for non-bootstrap roles
 
 ## System Diagram
 
