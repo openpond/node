@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 import { startGrpcServer } from "../grpc/p2p-service";
 import { NetworkName } from "../networks";
 import { P2PNetwork } from "../p2p";
+import { NodeRole } from "../types/p2p";
 import { Logger } from "../utils/logger";
 
 // Only run if this is the main module
@@ -71,6 +72,11 @@ async function main() {
         "Agent metadata as JSON string",
         process.env.AGENT_METADATA || "{}"
       )
+      .option(
+        "--role <string>",
+        "Node role (bootstrap, full, server, light)",
+        process.env.NODE_TYPE || "full"
+      )
       .parse(process.argv);
 
     const options = program.opts();
@@ -86,6 +92,26 @@ async function main() {
       console.error("Private key is required");
       process.exit(1);
     }
+
+    // Validate and convert role
+    const validRoles = ["bootstrap", "full", "server", "light"];
+    if (!validRoles.includes(options.role)) {
+      console.error(
+        `Invalid role: ${options.role}. Must be one of: ${validRoles.join(
+          ", "
+        )}`
+      );
+      process.exit(1);
+    }
+
+    // Map role string to NodeRole enum
+    const roleMap = {
+      bootstrap: NodeRole.BOOTSTRAP,
+      full: NodeRole.FULL,
+      server: NodeRole.SERVER,
+      light: NodeRole.LIGHT,
+    };
+    const nodeRole = roleMap[options.role as keyof typeof roleMap];
 
     // Initialize logger once
     const name = options.name || process.env.AGENT_NAME || "agent1";
@@ -109,6 +135,7 @@ async function main() {
     // Log startup configuration (excluding private key)
     Logger.info("P2P", "Starting with configuration", {
       name,
+      role: options.role,
       grpcPort: options.grpcPort,
       p2pPort: options.p2pPort,
       version: options.version,
@@ -126,6 +153,7 @@ async function main() {
       name,
       options.version,
       metadata,
+      nodeRole,
       options.registryAddress,
       options.rpcUrl,
       options.network as NetworkName,

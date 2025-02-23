@@ -1,5 +1,6 @@
-import { config } from 'dotenv';
+import { config } from "dotenv";
 import { P2PNetwork } from "./p2p";
+import { NodeRole } from "./types/p2p";
 
 config();
 
@@ -22,8 +23,11 @@ async function main() {
     "ducky",
     "1.0.0",
     { creators: "test" },
+    NodeRole.LIGHT,
     REGISTRY_ADDRESS,
-    RPC_URL
+    RPC_URL,
+    "base", // Default to base network
+    false // No encryption by default
   );
 
   // Start the network
@@ -35,8 +39,8 @@ async function main() {
   console.log(`Message sent! ID: ${messageId}`);
 
   // Wait a bit for the message to be sent
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  await new Promise((resolve) => setTimeout(resolve, 2000));
   process.exit(0);
 }
 
-main().catch(console.error); 
+main().catch(console.error);

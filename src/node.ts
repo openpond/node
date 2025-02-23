@@ -5,6 +5,7 @@ import path from "path";
 import { getBootstrapKey, getBootstrapPeerId } from "./constants";
 import { getRpcUrl, Network, NetworkName } from "./networks";
 import { P2PNetwork } from "./p2p";
+import { NodeRole } from "./types/p2p";
 import { Logger } from "./utils/logger";
 
 // Only load .env file if ENV_FILE is explicitly set (for local development)
@@ -20,11 +21,31 @@ if (!process.env.PRIVATE_KEY) {
   throw new Error("PRIVATE_KEY environment variable is required");
 }
 
-const NODE_TYPE = process.env.NODE_TYPE || "agent";
+// Map NODE_TYPE to NodeRole
+const nodeTypeToRole = {
+  bootstrap: NodeRole.BOOTSTRAP,
+  full: NodeRole.FULL,
+  server: NodeRole.SERVER,
+  light: NodeRole.LIGHT,
+} as const;
+
+const NODE_TYPE = process.env.NODE_TYPE || "full";
+
+// Validate NODE_TYPE
+if (!Object.keys(nodeTypeToRole).includes(NODE_TYPE)) {
+  throw new Error(
+    `Invalid NODE_TYPE: ${NODE_TYPE}. Must be one of: ${Object.keys(
+      nodeTypeToRole
+    ).join(", ")}`
+  );
+}
+
+const nodeRole = nodeTypeToRole[NODE_TYPE as keyof typeof nodeTypeToRole];
+
 const config = {
-  nodeType: NODE_TYPE,
+  role: nodeRole,
   name:
-    NODE_TYPE === "bootstrap"
+    nodeRole === NodeRole.BOOTSTRAP
       ? process.env.BOOTSTRAP_NAME || "bootstrap-1"
       : process.env.AGENT_NAME || "agent-1",
   port: parseInt(process.env.PORT || process.env.P2P_PORT || "8000"),
@@ -45,8 +66,8 @@ let p2p: P2PNetwork;
 
 /**
  * Initializes the P2P node with the provided configuration.
- * This function sets up either a bootstrap node or a regular agent node based on the configuration.
- * For bootstrap nodes, it uses a specific libp2p key, while regular nodes use their Ethereum private key.
+ * This function sets up a node based on its role (BOOTSTRAP, FULL, SERVER, or LIGHT).
+ * For bootstrap nodes, it uses a specific libp2p key, while other nodes use their Ethereum private key.
  * After initialization, it registers the node with the contract and sets up message handling for non-bootstrap nodes.
  *
  * @throws {Error} If the private key configuration is missing
@@ -62,7 +83,7 @@ async function initNode() {
 
   Logger.info("Node", "Initializing P2P node", {
     name: config.name,
-    nodeType: config.nodeType,
+    role: config.role,
     port: config.port,
   });
 
@@ -72,6 +93,7 @@ async function initNode() {
     config.name,
     config.version,
     config.metadata,
+    config.role,
     config.registryAddress,
     config.rpcUrl,
     config.network as NetworkName,
@@ -79,7 +101,7 @@ async function initNode() {
   );
 
   // If this is a bootstrap node, we need to use its specific libp2p key
-  if (config.nodeType === "bootstrap") {
+  if (config.role === NodeRole.BOOTSTRAP) {
     const bootstrapKey = await getBootstrapKey(config.name);
     await p2p.start(config.port, bootstrapKey);
   } else {
@@ -89,7 +111,7 @@ async function initNode() {
   await p2p.registerWithContract();
 
   // If we're a bootstrap node
-  if (config.nodeType === "bootstrap") {
+  if (config.role === NodeRole.BOOTSTRAP) {
     Logger.info("Node", "Starting bootstrap node", {
       name: config.name,
       expectedPeerId: getBootstrapPeerId(
