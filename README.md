@@ -242,7 +242,6 @@ The GitHub Actions workflow will automatically:
   - `p2p-node.js` - The bundled node file
   - `proto/p2p.proto` - Protocol buffer definitions
   - `proto/p2p.ts` - Protocol buffer TypeScript definitions
-  - `proto.zip` - Protocol buffer definitions
   - `checksums.txt` - SHA256 checksums for verification
 
 ### Using the Released Version

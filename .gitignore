@@ -15,6 +15,7 @@ p2p/swarm.log
 
 # Dependencies
 node_modules/
+dist/
 
 # Debug logs
 npm-debug.log*
