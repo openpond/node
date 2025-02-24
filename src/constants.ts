@@ -36,10 +36,10 @@ const BOOTSTRAP_PEER_IDS = {
 
 const BOOTSTRAP_PORTS = {
   base: {
-    "bootstrap-1": "14220", // Port for us-east
-    "bootstrap-2": "43343", // Port for us-west
-    "bootstrap-3": "37008", // Port for eu-west
-    "bootstrap-4": "19293", // Port for sea
+    "bootstrap-1": "49018", // Port for us-east
+    "bootstrap-2": "48131", // Port for us-west
+    "bootstrap-3": "40625", // Port for eu-west
+    "bootstrap-4": "27689", // Port for sea
   },
   sepolia: {
     "bootstrap-1": "30110", // Port for us-east
