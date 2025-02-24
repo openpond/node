@@ -131,7 +131,7 @@ export async function startExplorer() {
   const agentName = process.env.AGENT_NAME || `agent-${agentNum}`;
 
   // Initialize logger with file logging only, no stdout
-  await Logger.init(agentName, { useStdout: false, useFile: true });
+  await Logger.init(agentName, { useStdout: true, useFile: true });
 
   // Set up UI-only logging handler
   Logger.setLogHandler((level, namespace, message, meta) => {
@@ -143,7 +143,7 @@ export async function startExplorer() {
   });
 
   // Clean log file on startup
-  await cleanLogFile(agentNum);
+  //await cleanLogFile(agentNum);
 
   let selectedPeer: { ethAddr: string; peerId: string } | null = null;
 
@@ -405,7 +405,7 @@ export async function startExplorer() {
       process.env.AGENT_NAME || `agent-${agentNum}`,
       "1.0.0",
       {},
-      NodeRole.LIGHT,
+      NodeRole.FULL,
       process.env.REGISTRY_ADDRESS,
       process.env.RPC_URL,
       process.env.NETWORK as Network
@@ -705,7 +705,7 @@ export async function startExplorer() {
       await network.stop();
       await Logger.cleanup();
       // Clean log file on shutdown
-      await cleanLogFile(agentNum);
+      //await cleanLogFile(agentNum);
       screen.destroy();
       process.exit(0);
     };
