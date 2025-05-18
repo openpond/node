@@ -218,13 +218,13 @@ To create a new release:
 
    ```bash
    # For a patch version (0.1.0 -> 0.1.1)
-   pnpm run release
+   pnpm run release:patch
 
    # For a minor version (0.1.0 -> 0.2.0)
-   pnpm run release minor
+   pnpm run release:minor
 
    # For a major version (0.1.0 -> 1.0.0)
-   pnpm run release major
+   pnpm run release:major
    ```
 
 This will:
@@ -251,7 +251,7 @@ To use a specific release in another project:
 ```json
 {
   "dependencies": {
-    "@duckailabs/node": "github:duckailabs/node#v0.1.1"
+    "@openpond/node": "github:openpondai/node#v0.1.1"
   }
 }
 ```
