@@ -207,29 +207,50 @@ sequenceDiagram
 To create a new release:
 
 1. Make your changes and test them locally
-2. Build and test the bundled version:
+2. Create a pull request (PR) with your changes:
 
    ```bash
-   pnpm run build
-   # Test the built version
+   # Create a feature branch
+   git checkout -b feature/your-feature-name
+
+   # Make your changes
+   # ...
+
+   # Commit your changes with conventional commit messages
+   # Example: git commit -m "feat: add new feature"
+   # Example: git commit -m "fix: resolve issue with X"
+
+   # Push your branch and create a PR
+   git push -u origin feature/your-feature-name
    ```
 
-3. Create a new release:
+3. After PR review, merge your changes to master:
+
+   ```bash
+   # Switch to master
+   git checkout master
+
+   # Pull latest changes
+   git pull
+   ```
+
+4. Run the release script:
 
    ```bash
    # For a patch version (0.1.0 -> 0.1.1)
-   pnpm run release:patch
+   npm run release:patch
 
    # For a minor version (0.1.0 -> 0.2.0)
-   pnpm run release:minor
+   npm run release:minor
 
    # For a major version (0.1.0 -> 1.0.0)
-   pnpm run release:major
+   npm run release:major
    ```
 
 This will:
 
 - Bump the version in package.json
+- Update the CHANGELOG.md with all changes since the last release
 - Create a git commit
 - Create a git tag (e.g., v0.1.1)
 - Push changes and tag to GitHub
@@ -243,6 +264,38 @@ The GitHub Actions workflow will automatically:
   - `proto/p2p.proto` - Protocol buffer definitions
   - `proto/p2p.ts` - Protocol buffer TypeScript definitions
   - `checksums.txt` - SHA256 checksums for verification
+
+### Commit Message Format
+
+This project follows the [Conventional Commits](https://www.conventionalcommits.org/) specification. Commit messages should be structured as follows:
+
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+Common types:
+
+- `feat`: A new feature
+- `fix`: A bug fix
+- `docs`: Documentation changes
+- `style`: Code style changes (formatting, semi-colons, etc)
+- `refactor`: Code changes that neither fix bugs nor add features
+- `perf`: Performance improvements
+- `test`: Adding or correcting tests
+- `chore`: Changes to the build process, tools, etc.
+
+Examples:
+
+- `feat: add user authentication`
+- `fix: resolve memory leak in connection handling`
+- `docs: improve API documentation`
+- `chore: update dependencies`
+
+Using conventional commits ensures your changes will be properly categorized in the changelog.
 
 ### Using the Released Version
 

@@ -53,8 +53,25 @@ try {
     JSON.stringify(packageJson, null, 2) + "\n"
   );
 
+  // Generate or update CHANGELOG.md
+  console.log("Generating changelog...");
+  try {
+    // Create CHANGELOG.md if it doesn't exist
+    const changelogPath = path.join(process.cwd(), "CHANGELOG.md");
+    if (!fs.existsSync(changelogPath)) {
+      fs.writeFileSync(changelogPath, "# Changelog\n\n");
+    }
+
+    // Run conventional-changelog to update the changelog file
+    execSync("npx conventional-changelog-cli -p angular -i CHANGELOG.md -s");
+    console.log("Changelog updated successfully");
+  } catch (changelogError) {
+    console.error("Error generating changelog:", changelogError.message);
+    console.error("Continuing with version bump...");
+  }
+
   // Commit changes, create and push tag
-  execSync("git add package.json");
+  execSync("git add package.json CHANGELOG.md");
   execSync(`git commit -m "chore: release ${newVersion}"`);
   execSync(`git tag -a v${newVersion} -m "Release ${newVersion}"`);
   execSync("git push --follow-tags");
